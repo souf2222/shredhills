@@ -60,7 +60,43 @@ Open:
 - Kiosk:  http://localhost:3000/
 - Admin:  http://localhost:3000/admin  (login with `ADMIN_USERNAME` / `ADMIN_PASSWORD` from `.env`)
 
-## Running on a server
+## Running on Unraid (Docker)
+
+Clone to `/mnt/user/appdata/shredhills` and run with Docker Compose:
+
+```bash
+cd /mnt/user/appdata/shredhills
+
+# Create .env file
+cat > .env << 'EOF'
+PORT=3000
+SESSION_SECRET=change-to-a-long-random-string
+PGHOST=db
+PGPORT=5432
+PGDATABASE=shredhills_timeclock
+PGUSER=postgres
+PGPASSWORD=postgres
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin
+EOF
+
+# Start services
+docker compose up -d --build
+```
+
+The first start will initialize the database automatically.
+
+- App:    http://<unraid-ip>:3000/
+- Admin:  http://<unraid-ip>:3000/admin
+
+To view logs: `docker compose logs -f`
+To stop:   `docker compose down`
+
+Data persists in the `postgres_data` Docker volume. To reset: `docker compose down -v`
+
+---
+
+## Running on a server (non-Docker)
 
 It's a plain Node process. Common patterns:
 
