@@ -1,0 +1,52 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - heading "Shredhills Timeclock — Admin" [level=1] [ref=e4]
+    - generic [ref=e5]:
+      - link "Kiosk" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - button "Logout" [ref=e8] [cursor=pointer]
+  - navigation [ref=e9]:
+    - button "Punches" [ref=e10] [cursor=pointer]
+    - button "Report" [ref=e11] [cursor=pointer]
+    - button "Employees" [ref=e12] [cursor=pointer]
+  - generic [ref=e13]:
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - generic [ref=e16]: Employee
+        - combobox [ref=e17]:
+          - option "All" [selected]
+          - option "Alice Johnson (1001)"
+          - option "Bob Martinez (1002)"
+          - option "Carol Nguyen (1003)"
+          - option "seb (1005)"
+      - generic [ref=e18]:
+        - generic [ref=e19]: From
+        - textbox [ref=e20]
+      - generic [ref=e21]:
+        - generic [ref=e22]: To
+        - textbox [ref=e23]
+      - button "Apply" [ref=e24] [cursor=pointer]
+      - button "Clear" [ref=e25] [cursor=pointer]
+      - button "Export CSV" [ref=e26] [cursor=pointer]
+      - button "+ New punch" [ref=e27] [cursor=pointer]
+    - table [ref=e28]:
+      - rowgroup [ref=e29]:
+        - row "Employee Code Punch In Punch Out Hours Note" [ref=e30]:
+          - columnheader "Employee" [ref=e31]
+          - columnheader "Code" [ref=e32]
+          - columnheader "Punch In" [ref=e33]
+          - columnheader "Punch Out" [ref=e34]
+          - columnheader "Hours" [ref=e35]
+          - columnheader "Note" [ref=e36]
+          - columnheader [ref=e37]
+      - rowgroup [ref=e38]:
+        - row "Alice Johnson 1001 4/21/2026, 2:04:01 PM 4/21/2026, 2:04:01 PM 0.00 Edit Delete" [ref=e39]:
+          - cell "Alice Johnson" [ref=e40]
+          - cell "1001" [ref=e41]
+          - cell "4/21/2026, 2:04:01 PM" [ref=e42]
+          - cell "4/21/2026, 2:04:01 PM" [ref=e43]
+          - cell "0.00" [ref=e44]
+          - cell [ref=e45]
+          - cell "Edit Delete" [ref=e46]:
+            - button "Edit" [ref=e47] [cursor=pointer]
+            - button "Delete" [ref=e48] [cursor=pointer]

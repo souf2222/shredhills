@@ -1,0 +1,88 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e8]: Shredhills Timeclock — Administration
+    - generic [ref=e9]:
+      - link "Kiosque" [ref=e10] [cursor=pointer]:
+        - /url: /
+      - button "Déconnexion" [ref=e12] [cursor=pointer]
+  - generic [ref=e13]:
+    - navigation "Sections" [ref=e14]:
+      - generic [ref=e15]: Suivi
+      - button "Pointages" [ref=e16] [cursor=pointer]:
+        - img [ref=e18]
+        - text: Pointages
+      - button "Rapport" [ref=e21] [cursor=pointer]:
+        - img [ref=e23]
+        - text: Rapport
+      - generic [ref=e28]: Configuration
+      - button "Employés" [ref=e29] [cursor=pointer]:
+        - img [ref=e31]
+        - text: Employés
+    - generic [ref=e35]:
+      - heading "Pointages" [level=2] [ref=e36]
+      - paragraph [ref=e37]: Toutes les entrées et sorties enregistrées par les employés.
+      - generic [ref=e38]:
+        - generic [ref=e39]:
+          - generic [ref=e40]: Employé
+          - combobox [ref=e41]:
+            - option "All" [selected]
+            - option "Alice Johnson (1001)"
+            - option "Bob Martinez (1002)"
+            - option "Carol Nguyen (1003)"
+            - option "seb (1005)"
+        - generic [ref=e42]:
+          - generic [ref=e43]: Du
+          - textbox [ref=e44]
+        - generic [ref=e45]:
+          - generic [ref=e46]: Au
+          - textbox [ref=e47]
+        - button "Appliquer" [ref=e48] [cursor=pointer]
+        - button "Effacer" [ref=e49] [cursor=pointer]
+        - button "Exporter CSV" [ref=e50] [cursor=pointer]
+        - button "+ Nouveau pointage" [ref=e51] [cursor=pointer]
+      - table [ref=e53]:
+        - rowgroup [ref=e54]:
+          - row "Employé Code Entrée Sortie Heures Note" [ref=e55]:
+            - columnheader "Employé" [ref=e56]
+            - columnheader "Code" [ref=e57]
+            - columnheader "Entrée" [ref=e58]
+            - columnheader "Sortie" [ref=e59]
+            - columnheader "Heures" [ref=e60]
+            - columnheader "Note" [ref=e61]
+            - columnheader [ref=e62]
+        - rowgroup [ref=e63]:
+          - row "seb 1005 4/21/2026, 2:17:17 PM 4/21/2026, 2:17:30 PM 0.00 Modifier Supprimer" [ref=e64]:
+            - cell "seb" [ref=e65]
+            - cell "1005" [ref=e66]:
+              - code [ref=e67]: "1005"
+            - cell "4/21/2026, 2:17:17 PM" [ref=e68]
+            - cell "4/21/2026, 2:17:30 PM" [ref=e69]
+            - cell "0.00" [ref=e70]
+            - cell [ref=e71]
+            - cell "Modifier Supprimer" [ref=e72]:
+              - button "Modifier" [ref=e73] [cursor=pointer]
+              - button "Supprimer" [ref=e74] [cursor=pointer]
+          - row "seb 1005 4/21/2026, 2:05:00 PM 4/21/2026, 5:05:00 PM 3.00 Modifier Supprimer" [ref=e75]:
+            - cell "seb" [ref=e76]
+            - cell "1005" [ref=e77]:
+              - code [ref=e78]: "1005"
+            - cell "4/21/2026, 2:05:00 PM" [ref=e79]
+            - cell "4/21/2026, 5:05:00 PM" [ref=e80]
+            - cell "3.00" [ref=e81]
+            - cell [ref=e82]
+            - cell "Modifier Supprimer" [ref=e83]:
+              - button "Modifier" [ref=e84] [cursor=pointer]
+              - button "Supprimer" [ref=e85] [cursor=pointer]
+          - row "Alice Johnson modifié 1001 4/21/2026, 2:04:01 PM 4/21/2026, 3:30:00 PM 1.43 Modifié par moi pour tester Modifier Supprimer" [ref=e86]:
+            - cell "Alice Johnson modifié" [ref=e87]:
+              - text: Alice Johnson
+              - 'generic "Modifié par l''employé le 4/21/2026, 2:16:52 PM Entrée d''origine : 4/21/2026, 2:04:01 PM Sortie d''origine : 4/21/2026, 2:04:01 PM" [ref=e88]': modifié
+            - cell "1001" [ref=e89]:
+              - code [ref=e90]: "1001"
+            - cell "4/21/2026, 2:04:01 PM" [ref=e91]
+            - cell "4/21/2026, 3:30:00 PM" [ref=e92]
+            - cell "1.43" [ref=e93]
+            - cell "Modifié par moi pour tester" [ref=e94]
+            - cell "Modifier Supprimer" [ref=e95]:
+              - button "Modifier" [ref=e96] [cursor=pointer]
+              - button "Supprimer" [ref=e97] [cursor=pointer]

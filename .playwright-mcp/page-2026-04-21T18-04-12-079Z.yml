@@ -1,0 +1,12 @@
+- generic [ref=e3]:
+  - heading "Admin Login" [level=1] [ref=e4]
+  - generic [ref=e5]:
+    - generic [ref=e6]: Username
+    - textbox "Username" [active] [ref=e7]
+  - generic [ref=e8]:
+    - generic [ref=e9]: Password
+    - textbox "Password" [ref=e10]
+  - generic [ref=e11]:
+    - button "Sign in" [ref=e12] [cursor=pointer]
+    - link "Back to kiosk" [ref=e13] [cursor=pointer]:
+      - /url: /

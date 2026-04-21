@@ -1,0 +1,45 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e8]: Mes heures
+    - generic [ref=e9]:
+      - link "Kiosque" [ref=e10] [cursor=pointer]:
+        - /url: /
+      - button "Quitter" [ref=e11] [cursor=pointer]
+  - generic [ref=e13]:
+    - heading "Bienvenue" [level=2] [ref=e14]
+    - paragraph [ref=e15]: Voici votre relevé de pointages.
+    - generic [ref=e16]:
+      - generic [ref=e17]:
+        - generic [ref=e18]: Statut
+        - generic [ref=e19]: —
+      - generic [ref=e21]:
+        - generic [ref=e22]: Cette semaine
+        - generic [ref=e23]: 0,00 h
+        - generic [ref=e24]: Heures travaillées
+      - generic [ref=e25]:
+        - generic [ref=e26]: Ce mois
+        - generic [ref=e27]: 0,00 h
+        - generic [ref=e28]: Heures travaillées
+    - generic [ref=e29]:
+      - generic [ref=e30]:
+        - generic [ref=e31]: Du
+        - textbox [ref=e32]
+      - generic [ref=e33]:
+        - generic [ref=e34]: Au
+        - textbox [ref=e35]
+      - button "Filtrer" [ref=e36] [cursor=pointer]
+      - button "Tout" [ref=e37] [cursor=pointer]
+      - button "↻ Rafraîchir" [ref=e38] [cursor=pointer]
+    - table [ref=e40]:
+      - rowgroup [ref=e41]:
+        - row "Date Entrée Sortie Heures Note" [ref=e42]:
+          - columnheader "Date" [ref=e43]
+          - columnheader "Entrée" [ref=e44]
+          - columnheader "Sortie" [ref=e45]
+          - columnheader "Heures" [ref=e46]
+          - columnheader "Note" [ref=e47]
+          - columnheader [ref=e48]
+      - rowgroup [ref=e49]:
+        - row "Chargement…" [ref=e50]:
+          - cell "Chargement…" [ref=e51]
+    - paragraph [ref=e52]: Les modifications que vous faites ici sont enregistrées avec la mention « modifié par l'employé » et conservent un historique consultable par l'administrateur.

@@ -1,0 +1,29 @@
+- generic [ref=e15]:
+  - banner [ref=e16]:
+    - generic [ref=e17]: TimeClock
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - generic [ref=e20]: Administrator
+        - generic [ref=e21]: admin
+      - button "Logout" [ref=e22] [cursor=pointer]
+  - generic [ref=e23]:
+    - generic [ref=e24]:
+      - button "Punch Clock" [ref=e25] [cursor=pointer]
+      - button "History" [ref=e26] [cursor=pointer]
+      - button "Admin" [ref=e27] [cursor=pointer]
+      - button "Records" [ref=e28] [cursor=pointer]
+    - generic [ref=e29]:
+      - generic [ref=e30]:
+        - generic [ref=e31]: 01:44:02 PM
+        - generic [ref=e32]: Tuesday, April 21, 2026
+        - button "Punch In" [ref=e33] [cursor=pointer]
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - generic [ref=e36]: "--"
+          - generic [ref=e37]: Today's Total
+        - generic [ref=e38]:
+          - generic [ref=e39]: "--:--"
+          - generic [ref=e40]: Current Shift
+      - generic [ref=e41]:
+        - heading "Recent Activity" [level=3] [ref=e42]
+        - generic [ref=e44]: No recent activity

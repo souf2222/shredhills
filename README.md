@@ -67,18 +67,7 @@ Clone to `/mnt/user/appdata/shredhills` and run with Docker Compose:
 ```bash
 cd /mnt/user/appdata/shredhills
 
-# Create .env file
-cat > .env << 'EOF'
-PORT=3000
-SESSION_SECRET=change-to-a-long-random-string
-PGHOST=db
-PGPORT=5432
-PGDATABASE=shredhills_timeclock
-PGUSER=postgres
-PGPASSWORD=postgres
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=admin
-EOF
+# .env and .env.db are included in the repo (already Docker-ready)
 
 # Start services
 docker compose up -d --build

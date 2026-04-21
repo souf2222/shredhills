@@ -1,0 +1,58 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e8]: Mes heures
+    - generic [ref=e9]:
+      - link "Kiosque" [ref=e10] [cursor=pointer]:
+        - /url: /
+      - button "Quitter" [ref=e11] [cursor=pointer]
+  - generic [ref=e15]:
+    - heading "Espace employé" [level=2] [ref=e16]
+    - generic [ref=e17]:
+      - generic [ref=e18]: Code employé
+      - textbox "Code employé" [active] [ref=e19]
+    - generic [ref=e20]:
+      - generic [ref=e21]: NIP
+      - textbox "NIP" [ref=e22]
+    - generic [ref=e23]:
+      - link "Annuler" [ref=e24] [cursor=pointer]:
+        - /url: /
+      - button "Se connecter" [ref=e25] [cursor=pointer]
+    - status
+  - generic [ref=e27]:
+    - heading "Bienvenue" [level=2] [ref=e28]
+    - paragraph [ref=e29]: Voici votre relevé de pointages.
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - generic [ref=e32]: Statut
+        - generic [ref=e33]: —
+      - generic [ref=e35]:
+        - generic [ref=e36]: Cette semaine
+        - generic [ref=e37]: 0,00 h
+        - generic [ref=e38]: Heures travaillées
+      - generic [ref=e39]:
+        - generic [ref=e40]: Ce mois
+        - generic [ref=e41]: 0,00 h
+        - generic [ref=e42]: Heures travaillées
+    - generic [ref=e43]:
+      - generic [ref=e44]:
+        - generic [ref=e45]: Du
+        - textbox [ref=e46]
+      - generic [ref=e47]:
+        - generic [ref=e48]: Au
+        - textbox [ref=e49]
+      - button "Filtrer" [ref=e50] [cursor=pointer]
+      - button "Tout" [ref=e51] [cursor=pointer]
+      - button "↻ Rafraîchir" [ref=e52] [cursor=pointer]
+    - table [ref=e54]:
+      - rowgroup [ref=e55]:
+        - row "Date Entrée Sortie Heures Note" [ref=e56]:
+          - columnheader "Date" [ref=e57]
+          - columnheader "Entrée" [ref=e58]
+          - columnheader "Sortie" [ref=e59]
+          - columnheader "Heures" [ref=e60]
+          - columnheader "Note" [ref=e61]
+          - columnheader [ref=e62]
+      - rowgroup [ref=e63]:
+        - row "Chargement…" [ref=e64]:
+          - cell "Chargement…" [ref=e65]
+    - paragraph [ref=e66]: Les modifications que vous faites ici sont enregistrées avec la mention « modifié par l'employé » et conservent un historique consultable par l'administrateur.

@@ -1,0 +1,21 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]: Shredhills Timeclock
+    - generic [ref=e6]: Espace employé
+    - generic [ref=e7]:
+      - link "Kiosque" [ref=e8] [cursor=pointer]:
+        - /url: /
+      - button "Déconnexion" [ref=e9] [cursor=pointer]
+  - generic [ref=e13]:
+    - heading "Espace employé" [level=2] [ref=e14]
+    - generic [ref=e15]:
+      - generic [ref=e16]: Code employé
+      - textbox "Code employé" [active] [ref=e17]
+    - generic [ref=e18]:
+      - generic [ref=e19]: NIP
+      - textbox "NIP" [ref=e20]
+    - generic [ref=e21]:
+      - link "Annuler" [ref=e22] [cursor=pointer]:
+        - /url: /
+      - button "Se connecter" [ref=e23] [cursor=pointer]
+    - status [ref=e24]

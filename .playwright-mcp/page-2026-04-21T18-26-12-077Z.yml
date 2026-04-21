@@ -1,0 +1,19 @@
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]: Shredhills Timeclock
+    - generic [ref=e5]: Connexion administrateur
+    - link "Retour au kiosque" [ref=e7] [cursor=pointer]:
+      - /url: /
+  - main [ref=e8]:
+    - generic [ref=e9]:
+      - heading "Administration" [level=2] [ref=e10]
+      - generic [ref=e11]:
+        - generic [ref=e12]: Nom d'utilisateur
+        - textbox "Nom d'utilisateur" [active] [ref=e13]
+      - generic [ref=e14]:
+        - generic [ref=e15]: Mot de passe
+        - textbox "Mot de passe" [ref=e16]
+      - generic [ref=e17]:
+        - link "Annuler" [ref=e18] [cursor=pointer]:
+          - /url: /
+        - button "Se connecter" [ref=e19] [cursor=pointer]
