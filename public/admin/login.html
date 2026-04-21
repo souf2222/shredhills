@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Connexion administrateur — Shredhills Timeclock</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="login">
+  <header class="topbar">
+    <div class="topbar__brand"><span class="dot" aria-hidden="true"></span> Shredhills Timeclock</div>
+    <div class="topbar__center"></div>
+    <div class="topbar__right">
+      <a href="/" class="btn btn-ghost">Retour au kiosque</a>
+    </div>
+  </header>
+
+  <main class="login-stage">
+    <form class="login-card" method="POST" action="/admin/login">
+      <div class="login-card__eyebrow">Timeclock</div>
+      <h2>Connexion administrateur</h2>
+      <p class="subtitle">Gérez les employés, les pointages et les rapports.</p>
+      <label class="field">
+        <span>Nom d'utilisateur</span>
+        <input type="text" name="username" required autofocus />
+      </label>
+      <label class="field">
+        <span>Mot de passe</span>
+        <input type="password" name="password" required />
+      </label>
+      <div class="actions">
+        <a href="/" class="btn btn-ghost" style="display:inline-grid; place-items:center; text-decoration:none;">Annuler</a>
+        <button type="submit" class="primary">Se connecter</button>
+      </div>
+    </form>
+  </main>
+</body>
+</html>

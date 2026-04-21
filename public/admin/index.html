@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Administration — Shredhills Timeclock</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="app">
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar__brand"><span class="dot" aria-hidden="true"></span> Shredhills Timeclock</div>
+      <div class="topbar__center">Administration</div>
+      <div class="topbar__right">
+        <a href="/" class="btn btn-ghost">Kiosque</a>
+        <form method="POST" action="/admin/logout" style="display:inline;">
+          <button class="btn-ghost" type="submit">Déconnexion</button>
+        </form>
+      </div>
+    </header>
+
+    <div class="app-body">
+      <nav class="sidebar" aria-label="Sections">
+        <div class="group-label">Suivi</div>
+        <button class="side-item active" data-tab="punches">
+          <span class="icon" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/>
+            </svg>
+          </span>
+          Pointages
+        </button>
+        <button class="side-item" data-tab="report">
+          <span class="icon" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 13V3M2 13h12"/><rect x="4" y="8" width="2" height="4"/><rect x="8" y="5" width="2" height="7"/><rect x="12" y="9" width="2" height="3"/>
+            </svg>
+          </span>
+          Rapport
+        </button>
+        <div class="group-label">Configuration</div>
+        <button class="side-item" data-tab="employees">
+          <span class="icon" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="8" cy="6" r="2.5"/><path d="M3 13c0-2.5 2.2-4 5-4s5 1.5 5 4"/>
+            </svg>
+          </span>
+          Employés
+        </button>
+      </nav>
+
+      <section class="content">
+        <!-- Pointages -->
+        <div id="tab-punches" class="tab-panel">
+          <h2>Pointages</h2>
+          <p class="subtitle">Toutes les entrées et sorties enregistrées par les employés.</p>
+
+          <div class="toolbar">
+            <div class="field-inline">
+              <label>Employé</label>
+              <select id="f-employee"><option value="">Tous</option></select>
+            </div>
+            <div class="field-inline"><label>Du</label><input type="date" id="f-from" /></div>
+            <div class="field-inline"><label>Au</label><input type="date" id="f-to" /></div>
+            <button id="f-apply" class="primary">Appliquer</button>
+            <button id="f-clear" class="btn-ghost">Effacer</button>
+            <span class="spacer"></span>
+            <button id="f-export" class="btn-ghost">Exporter CSV</button>
+            <button id="f-new-punch">+ Nouveau pointage</button>
+          </div>
+
+          <div class="table-card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Employé</th><th>Code</th>
+                  <th>Entrée</th><th>Sortie</th>
+                  <th class="num">Heures</th><th>Note</th><th></th>
+                </tr>
+              </thead>
+              <tbody id="punches-body"><tr><td colspan="7" class="empty">Chargement…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Rapport -->
+        <div id="tab-report" class="tab-panel" hidden>
+          <h2>Rapport</h2>
+          <p class="subtitle">Total des heures travaillées par employé sur une période.</p>
+
+          <div class="toolbar">
+            <div class="field-inline"><label>Du</label><input type="date" id="r-from" /></div>
+            <div class="field-inline"><label>Au</label><input type="date" id="r-to" /></div>
+            <button id="r-apply" class="primary">Générer</button>
+            <button id="r-week"  class="btn-ghost">Cette semaine</button>
+            <button id="r-month" class="btn-ghost">Ce mois</button>
+          </div>
+
+          <div class="table-card">
+            <table>
+              <thead>
+                <tr><th>Employé</th><th>Code</th><th class="num">Pointages</th><th class="num">Heures totales</th></tr>
+              </thead>
+              <tbody id="report-body"><tr><td colspan="4" class="empty">Cliquez sur Générer pour calculer.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Employés -->
+        <div id="tab-employees" class="tab-panel" hidden>
+          <h2>Employés</h2>
+          <p class="subtitle">Gérez la liste des employés et leur code/NIP.</p>
+
+          <div class="toolbar">
+            <span class="spacer"></span>
+            <button id="e-new" class="primary">+ Ajouter</button>
+          </div>
+
+          <div class="table-card">
+            <table>
+              <thead>
+                <tr><th>Code</th><th>Nom</th><th>Statut</th><th>Créé le</th><th></th></tr>
+              </thead>
+              <tbody id="employees-body"><tr><td colspan="5" class="empty">Chargement…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="/ui.js"></script>
+  <script src="/admin/admin.js"></script>
+</body>
+</html>

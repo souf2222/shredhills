@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shredhills Timeclock</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="kiosk">
+  <div class="kiosk-shell">
+    <header class="topbar">
+      <div class="topbar__brand"><span class="dot" aria-hidden="true"></span> Shredhills Timeclock</div>
+      <div class="topbar__center"></div>
+      <div class="topbar__right">
+        <a href="/admin" class="btn btn-ghost">Administration</a>
+      </div>
+    </header>
+
+    <main class="kiosk-stage">
+      <section class="kiosk-card">
+        <h1>Pointage</h1>
+        <p class="clock" id="clock">--:--:--</p>
+
+        <form id="punch-form" autocomplete="off">
+          <label class="field">
+            <span>Code employé</span>
+            <input type="text" id="code" inputmode="numeric" autocomplete="off" required autofocus />
+          </label>
+
+          <label class="field">
+            <span>NIP</span>
+            <input type="password" id="pin" inputmode="numeric" autocomplete="off" required />
+          </label>
+
+          <div class="kiosk-actions">
+            <button type="button" id="btn-in"  class="success">Entrer</button>
+            <button type="button" id="btn-out" class="danger">Sortir</button>
+          </div>
+        </form>
+
+        <div id="message" role="status" aria-live="polite"></div>
+
+        <div id="my-hours-cta" hidden>
+          <button type="button" id="btn-my-hours" class="primary">
+            <span style="display:inline-flex; align-items:center; gap:6px;">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="8" cy="8" r="6.5"/>
+                <path d="M8 4.5V8l2.5 1.5"/>
+              </svg>
+              Voir mes heures
+            </span>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="kiosk-foot">
+      <span>Saisissez votre code, puis votre NIP.</span>
+      <span id="foot-time"></span>
+    </footer>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
