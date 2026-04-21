@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   app:
+    container_name: shredhills-app
     build: .
     ports:
       - "3000:3000"
@@ -13,6 +14,7 @@ services:
     restart: unless-stopped
 
   db:
+    container_name: shredhills-db
     image: postgres:16-alpine
     env_file:
       - .env.db
