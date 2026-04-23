@@ -112,6 +112,24 @@ const groupByDay = (sessions) => {
 };
 async function sendEmailSimulated(){await new Promise(r=>setTimeout(r,700));}
 
+const getDateRange = (range, customStart, customEnd) => {
+  const now = Date.now();
+  const today = dayStart(now);
+  const dayOfWeek = new Date().getDay() || 7;
+  
+  if (range === "week") {
+    return { start: today - (dayOfWeek - 1) * DAY, end: now };
+  } else if (range === "month") {
+    const firstOfMonth = new Date(now);
+    firstOfMonth.setDate(1);
+    firstOfMonth.setHours(0,0,0,0);
+    return { start: firstOfMonth.getTime(), end: now };
+  } else if (range === "custom" && customStart && customEnd) {
+    return { start: new Date(customStart).getTime(), end: new Date(customEnd).getTime() + DAY - 1 };
+  }
+  return { start: today - (dayOfWeek - 1) * DAY, end: now };
+};
+
 // ─── PIN PAD ──────────────────────────────────────────────────────────────────
 function PinPad({ onSuccess, onBack, userName, userColor }) {
   const [pin,setPin]=useState(""); const [shake,setShake]=useState(false); const MAX=4;
@@ -387,6 +405,9 @@ export default function App() {
   const [newEmp,   setNewEmp]   = useState({name:"",pin:"",color:"#FF6B35",role:"employee"});
   const [toast,    setToast]    = useState(null);
   const [sending,  setSending]  = useState(null);
+  const [dateRange, setDateRange] = useState("week"); // week, month, custom
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
   const [,clockTick]=useState(0);
   useEffect(()=>{const t=setInterval(()=>clockTick(x=>x+1),1000);return()=>clearInterval(t);},[]);
 
@@ -908,6 +929,8 @@ const handleDeleteOrder = async (id) => {
   );
 
   // ══════════ COMPTABLE ══════════════════════════════════════════════════════
+  const { start: rangeStart, end: rangeEnd } = getDateRange(dateRange, customStart, customEnd);
+  
   if(currentUser.role==="accountant") return (
     <div style={{minHeight:"100vh",background:"#F2F2F7"}}>
       <style>{CSS}</style>
@@ -915,15 +938,27 @@ const handleDeleteOrder = async (id) => {
       <div style={{padding:"14px 20px 0"}}><div className="tabs"><button className={`tab ${acctTab==="timesheets"?"on":""}`} onClick={()=>setAcctTab("timesheets")}>🕐 Heures</button><button className={`tab ${acctTab==="purchases"?"on":""}`} onClick={()=>setAcctTab("purchases")}>🧾 Achats{pendingPurchases>0&&<span style={{background:"#FF3B30",color:"white",borderRadius:20,fontSize:10,padding:"1px 6px",marginLeft:4}}>{pendingPurchases}</span>}</button></div></div>
       <div style={{maxWidth:900,margin:"0 auto",padding:"16px 20px 40px"}}>
         {acctTab==="timesheets"&&(<div>
+          <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
+            <select value={dateRange} onChange={e=>setDateRange(e.target.value)} style={{background:"white",border:"1px solid #E5E5EA",borderRadius:10,padding:"8px 12px",fontSize:13,fontWeight:600,fontFamily:"inherit",cursor:"pointer"}}>
+              <option value="week">Cette semaine</option>
+              <option value="month">Ce mois</option>
+              <option value="custom">Personnalisé</option>
+            </select>
+            {dateRange==="custom"&&(<>
+              <input type="date" value={customStart} onChange={e=>setCustomStart(e.target.value)} style={{background:"white",border:"1px solid #E5E5EA",borderRadius:10,padding:"8px 12px",fontSize:13,fontFamily:"inherit"}}/>
+              <span style={{color:"#8E8E93"}}>à</span>
+              <input type="date" value={customEnd} onChange={e=>setCustomEnd(e.target.value)} style={{background:"white",border:"1px solid #E5E5EA",borderRadius:10,padding:"8px 12px",fontSize:13,fontFamily:"inherit"}}/>
+            </>)}
+          </div>
           <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
-            {users.filter(u=>u.role==="employee"||u.role==="driver").map(u=>{const eps=punches[u.id]||[];const wk=Date.now()-(new Date().getDay()||7)*DAY;const wkMs=eps.filter(p=>p.punchIn>=wk&&p.punchOut).reduce((a,p)=>a+(p.punchOut-p.punchIn),0);return(<div key={u.id} className="card" style={{flex:1,minWidth:130,padding:"14px",borderTop:`3px solid ${u.color}`}}><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}><div style={{width:26,height:26,borderRadius:9,background:u.color+"18",color:u.color,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:12}}>{u.name[0]}</div><div style={{fontWeight:600,fontSize:13}}>{u.name}{u.role==="driver"&&<span style={{fontSize:10,color:"#8E8E93",marginLeft:4}}>🚐</span>}</div></div><div style={{fontSize:18,fontWeight:700,color:"#007AFF"}}>{fmtHours(wkMs)}</div><div style={{fontSize:10,color:"#8E8E93"}}>cette semaine</div></div>);})}
+            {users.filter(u=>u.role==="employee"||u.role==="driver").map(u=>{const eps=punches[u.id]||[];const wkMs=eps.filter(p=>p.punchIn>=rangeStart&&p.punchIn<=rangeEnd&&p.punchOut).reduce((a,p)=>a+(p.punchOut-p.punchIn),0);return(<div key={u.id} className="card" style={{flex:1,minWidth:130,padding:"14px",borderTop:`3px solid ${u.color}`}}><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}><div style={{width:26,height:26,borderRadius:9,background:u.color+"18",color:u.color,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:12}}>{u.name[0]}</div><div style={{fontWeight:600,fontSize:13}}>{u.name}{u.role==="driver"&&<span style={{fontSize:10,color:"#8E8E93",marginLeft:4}}>🚐</span>}</div></div><div style={{fontSize:18,fontWeight:700,color:"#007AFF"}}>{fmtHours(wkMs)}</div><div style={{fontSize:10,color:"#8E8E93"}}>{dateRange==="week"?"cette semaine":dateRange==="month"?"ce mois":"période"}</div></div>);})}
           </div>
           {users.filter(u=>u.role==="employee"||u.role==="driver").map(u=>{
-            const eps=punches[u.id]||[];const totalMs=eps.filter(p=>p.punchOut).reduce((a,p)=>a+(p.punchOut-p.punchIn),0);const wk=Date.now()-(new Date().getDay()||7)*DAY;const wkMs=eps.filter(p=>p.punchIn>=wk&&p.punchOut).reduce((a,p)=>a+(p.punchOut-p.punchIn),0);const active=eps.some(s=>dayStart(s.punchIn)===dayStart(Date.now())&&!s.punchOut);const days=groupByDay(eps);
+            const eps=punches[u.id]||[];const totalMs=eps.filter(p=>p.punchIn>=rangeStart&&p.punchIn<=rangeEnd&&p.punchOut).reduce((a,p)=>a+(p.punchOut-p.punchIn),0);const wkMs=eps.filter(p=>p.punchIn>=rangeStart&&p.punchIn<=rangeEnd&&p.punchOut).reduce((a,p)=>a+(p.punchOut-p.punchIn),0);const active=eps.some(s=>dayStart(s.punchIn)===dayStart(Date.now())&&!s.punchOut);const days=groupByDay(eps.filter(p=>p.punchIn>=rangeStart&&p.punchIn<=rangeEnd));
             return(<div key={u.id} className="card" style={{marginBottom:14,borderLeft:`4px solid ${u.color}`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:10}}>
                 <div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:44,height:44,borderRadius:14,background:u.color+"18",color:u.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:700}}>{u.name[0]}</div><div><div style={{fontWeight:700,fontSize:16}}>{u.name} {u.role==="driver"&&<span style={{fontSize:12,color:"#AF52DE"}}>🚐</span>}</div><div style={{fontFamily:"monospace",fontSize:11,color:"#8E8E93"}}>{u.id}</div></div>{active&&<span style={{display:"flex",alignItems:"center",gap:4,background:"rgba(52,199,89,.1)",border:"1px solid rgba(52,199,89,.3)",borderRadius:20,padding:"3px 10px",fontSize:12,fontWeight:600,color:"#34C759"}}><span style={{width:5,height:5,borderRadius:"50%",background:"#34C759",display:"inline-block",animation:"blink 1s ease infinite"}}/>Pointé</span>}</div>
-                <div style={{display:"flex",gap:14,textAlign:"center"}}><div><div style={{fontSize:18,fontWeight:700,color:"#007AFF"}}>{fmtHours(wkMs)}</div><div style={{fontSize:11,color:"#8E8E93"}}>semaine</div></div><div><div style={{fontSize:18,fontWeight:700,color:u.color}}>{fmtHours(totalMs)}</div><div style={{fontSize:11,color:"#8E8E93"}}>total</div></div></div>
+                <div style={{display:"flex",gap:14,textAlign:"center"}}><div><div style={{fontSize:18,fontWeight:700,color:"#007AFF"}}>{fmtHours(wkMs)}</div><div style={{fontSize:11,color:"#8E8E93"}}>{dateRange==="week"?"semaine":dateRange==="month"?"mois":"période"}</div></div><div><div style={{fontSize:18,fontWeight:700,color:u.color}}>{fmtHours(totalMs)}</div><div style={{fontSize:11,color:"#8E8E93"}}>total</div></div></div>
               </div>
               <div style={{borderTop:"1px solid #F2F2F7",paddingTop:12}}><p className="sec">Pointages</p>{days.length===0&&<p style={{fontSize:13,color:"#C7C7CC",textAlign:"center",padding:"8px 0"}}>Aucun pointage</p>}{days.map(({dayTs,sessions,totalMs:dMs,hasActive})=>(<div key={dayTs} style={{marginBottom:8,background:"#F9F9F9",borderRadius:10,padding:"9px 12px"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:12,fontWeight:600,textTransform:"capitalize"}}>{new Date(dayTs).toLocaleDateString("fr-CA",{weekday:"long",month:"long",day:"numeric"})}</span><span style={{fontFamily:"monospace",fontWeight:800,color:hasActive?"#FF9500":"#007AFF",fontSize:13}}>{fmtHours(dMs)}</span></div>{sessions.map((s,i)=><div key={s.id} style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#6D6D72",padding:"1px 0"}}><span>Session {i+1} : {fmtTime(s.punchIn)} → {s.punchOut?fmtTime(s.punchOut):"en cours"}{s.note&&<span style={{color:"#FF9500",marginLeft:4}}>✏️ {s.note}</span>}</span>{s.punchOut&&<span style={{fontFamily:"monospace",fontWeight:600}}>{fmtHours(s.punchOut-s.punchIn)}</span>}</div>)}</div>))}</div>
             </div>);
