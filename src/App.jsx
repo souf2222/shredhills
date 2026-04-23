@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useFirestore } from "./hooks/useFirestore";
 import { seedDatabase } from "./seed";
+import { initAuth, onAuthStateChanged } from "./firebase";
 
 const Logo = ({ size = 32 }) => (
   <svg width={size} height={size} viewBox="0 0 80 80" fill="none">
@@ -357,6 +358,11 @@ export default function App() {
     getPunchSessions, addPunchSession, updatePunchSession, closePunchSession,
     addPurchase, updatePurchase,
   } = useFirestore();
+
+  useEffect(() => {
+    initAuth();
+  }, []);
+
   const [companyName, setCompanyName] = useState("Shredhills");
   const [loginStep,   setLoginStep]   = useState("select");
   const [selectedUser,setSelectedUser]= useState(null);

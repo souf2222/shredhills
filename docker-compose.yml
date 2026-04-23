@@ -4,23 +4,24 @@ services:
   shredhills:
     build:
       context: .
-      args:
-        REACT_APP_FIREBASE_API_KEY: ${FIREBASE_API_KEY}
-        REACT_APP_FIREBASE_AUTH_DOMAIN: ${FIREBASE_AUTH_DOMAIN}
-        REACT_APP_FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
-        REACT_APP_FIREBASE_STORAGE_BUCKET: ${FIREBASE_STORAGE_BUCKET}
-        REACT_APP_FIREBASE_MESSAGING_SENDER_ID: ${FIREBASE_MESSAGING_SENDER_ID}
-        REACT_APP_FIREBASE_APP_ID: ${FIREBASE_APP_ID}
-    ports:
-      - "3000:3000"
+      dockerfile: Dockerfile
+    container_name: shredhills
     restart: unless-stopped
+    environment:
+      - REACT_APP_FIREBASE_API_KEY=${REACT_APP_FIREBASE_API_KEY}
+      - REACT_APP_FIREBASE_AUTH_DOMAIN=${REACT_APP_FIREBASE_AUTH_DOMAIN}
+      - REACT_APP_FIREBASE_PROJECT_ID=${REACT_APP_FIREBASE_PROJECT_ID}
+      - REACT_APP_FIREBASE_STORAGE_BUCKET=${REACT_APP_FIREBASE_STORAGE_BUCKET}
+      - REACT_APP_FIREBASE_MESSAGING_SENDER_ID=${REACT_APP_FIREBASE_MESSAGING_SENDER_ID}
+      - REACT_APP_FIREBASE_APP_ID=${REACT_APP_FIREBASE_APP_ID}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.shredhills.rule=Host(`${SHREDHILLS_DOMAIN}`)"
+      - "traefik.http.routers.shredhills.entrypoints=https"
+      - "traefik.http.routers.shredhills.tls=true"
+    networks:
+      - qcav-network1
 
-  # Optional: Nginx for production
-  # shredhills-prod:
-  #   build: .
-  #   container_name: shredhills-prod
-  #   ports:
-  #     - "8080:80"
-  #   environment:
-  #     - REACT_APP_FIREBASE_* (same as above)
-  #   restart: unless-stopped
+networks:
+  qcav-network1:
+    external: true
