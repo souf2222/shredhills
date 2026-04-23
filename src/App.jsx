@@ -454,8 +454,10 @@ export default function App() {
   };
 
   const removeStop = async (id) => {
-    await deleteStop(id);
-    showToast("Supprime");
+    if (confirm("Supprimer cet arrêt ?")) {
+      await deleteStop(id);
+      showToast("Arrêt supprimé");
+    }
   };
 
   // ── ORDERS ────────────────────────────────────────────────────────────────
@@ -477,8 +479,10 @@ export default function App() {
   };
 
   const handleDeleteOrder = async (id) => {
-    await deleteOrder(id);
-    showToast(" supprim");
+    if (confirm("Supprimer cette commande ?")) {
+      await deleteOrder(id);
+      showToast("Commande supprimée");
+    }
   };
 
   const addOrder = async () => {
