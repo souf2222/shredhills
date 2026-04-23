@@ -6,7 +6,7 @@ services:
     container_name: shredhills
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3000:80"
     environment:
       - REACT_APP_FIREBASE_API_KEY=${REACT_APP_FIREBASE_API_KEY}
       - REACT_APP_FIREBASE_AUTH_DOMAIN=${REACT_APP_FIREBASE_AUTH_DOMAIN}
@@ -19,7 +19,7 @@ services:
       - "traefik.http.routers.shredhills.rule=Host(`${SHREDHILLS_DOMAIN}`)"
       - "traefik.http.routers.shredhills.entrypoints=https"
       - "traefik.http.routers.shredhills.tls=true"
-      - "traefik.http.services.shredhills.loadbalancer.server.port=3000"
+      - "traefik.http.services.shredhills.loadbalancer.server.port=80"
     networks:
       - qcav-network1
 
