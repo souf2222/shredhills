@@ -73,8 +73,6 @@ Les données sont en mémoire (se réinitialisent au refresh).
 
 7. Relance l'app : `npm start`
 
-8. Sur la page de login, clique **"Initialiser la base de données"** (une seule fois)
-
 ---
 
 ### ÉTAPE 4 — Mettre en ligne (accessible de partout)
