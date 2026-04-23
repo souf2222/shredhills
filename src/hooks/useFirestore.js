@@ -76,7 +76,9 @@ export function useFirestore() {
   };
 
   const deleteUser = async (id) => {
+    console.log("Firestore deleteUser called with:", id);
     await deleteDoc(doc(db, "users", id));
+    console.log("Firestore deleteUser completed");
   };
 
   // ── ORDERS ────────────────────────────────────────────────────────────────
@@ -89,7 +91,11 @@ export function useFirestore() {
   };
 
   const deleteOrder = async (id) => {
-    await deleteDoc(doc(db, "orders", id));
+    console.log("Firestore deleteOrder called with:", id);
+    const docRef = doc(db, "orders", id);
+    console.log("Doc ref:", docRef);
+    await deleteDoc(docRef);
+    console.log("Firestore deleteDoc completed");
   };
 
   // ── STOPS ─────────────────────────────────────────────────────────────────
@@ -102,7 +108,9 @@ export function useFirestore() {
   };
 
   const deleteStop = async (id) => {
+    console.log("Firestore deleteStop called with:", id);
     await deleteDoc(doc(db, "stops", id));
+    console.log("Firestore deleteStop completed");
   };
 
   // ── PUNCHES ───────────────────────────────────────────────────────────────
