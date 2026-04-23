@@ -656,6 +656,7 @@ export default function App() {
         {loginStep==="select"?(
           <div>
             <p style={{fontSize:13,color:"#8E8E93",textAlign:"center",marginBottom:16}}>Choisir ton profil</p>
+            {users.length===0&&<button className="btn btn-primary" style={{marginBottom:20,width:"100%"}} onClick={()=>{seedDatabase();showToast("Base initialisee!");}}>Initialiser la base de donnees</button>}
             {[
               {label:"Gestion",users:users.filter(u=>u.role!=="employee"&&u.role!=="driver")},
               {label:"Employés atelier",users:employees},
