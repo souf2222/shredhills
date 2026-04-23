@@ -360,7 +360,7 @@ export default function App() {
   } = useFirestore();
 
   useEffect(() => {
-    initAuth();
+    initAuth().catch(console.error);
   }, []);
 
   const [companyName, setCompanyName] = useState("Shredhills");
