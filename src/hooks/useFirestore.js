@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import {
   collection, doc, onSnapshot, setDoc, updateDoc,
-  deleteDoc, addDoc, serverTimestamp, query, orderBy, getDoc
+  deleteDoc, addDoc, serverTimestamp, query, orderBy, getDoc, getDocs
 } from "firebase/firestore";
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../firebase";
