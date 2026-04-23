@@ -128,8 +128,10 @@ const getDateRange = (range, customStart, customEnd) => {
     firstOfMonth.setDate(1);
     firstOfMonth.setHours(0,0,0,0);
     return { start: firstOfMonth.getTime(), end: now };
-  } else if (range === "custom" && customStart && customEnd) {
-    return { start: new Date(customStart).getTime(), end: new Date(customEnd).getTime() + DAY - 1 };
+  } else if (range === "custom" && customStart) {
+    const startTime = new Date(customStart).getTime();
+    const endTime = customEnd ? new Date(customEnd).getTime() + DAY - 1 : startTime + DAY - 1;
+    return { start: startTime, end: endTime };
   }
   return { start: today - (dayOfWeek - 1) * DAY, end: now };
 };
@@ -962,11 +964,29 @@ const handleDeleteOrder = async (id) => {
               <option value="month">Ce mois</option>
               <option value="custom">Personnalisé</option>
             </select>
-            {dateRange==="custom"&&(<>
-              <input type="date" value={customStart} onChange={e=>setCustomStart(e.target.value)} style={{background:"white",border:"1px solid #E5E5EA",borderRadius:10,padding:"8px 12px",fontSize:13,fontFamily:"inherit"}}/>
-              <span style={{color:"#8E8E93"}}>à</span>
-              <input type="date" value={customEnd} onChange={e=>setCustomEnd(e.target.value)} style={{background:"white",border:"1px solid #E5E5EA",borderRadius:10,padding:"8px 12px",fontSize:13,fontFamily:"inherit"}}/>
-            </>)}
+            {dateRange === "custom" && (
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <input 
+                  type="date" 
+                  value={customStart} 
+                  onChange={e => {
+                    console.log("Start date changed:", e.target.value);
+                    setCustomStart(e.target.value);
+                  }} 
+                  style={{background:"white",border:"1px solid #E5E5EA",borderRadius:10,padding:"8px 12px",fontSize:13,fontFamily:"inherit"}}
+                />
+                <span style={{color:"#8E8E93"}}>à</span>
+                <input 
+                  type="date" 
+                  value={customEnd} 
+                  onChange={e => {
+                    console.log("End date changed:", e.target.value);
+                    setCustomEnd(e.target.value);
+                  }} 
+                  style={{background:"white",border:"1px solid #E5E5EA",borderRadius:10,padding:"8px 12px",fontSize:13,fontFamily:"inherit"}}
+                />
+              </div>
+            )}
           </div>
           <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
             {users.filter(u=>u.role==="employee"||u.role==="driver").map(u=>{const eps=punches[u.id]||[];const wkMs=eps.filter(p=>p.punchIn>=rangeStart&&p.punchIn<=rangeEnd&&p.punchOut).reduce((a,p)=>a+(p.punchOut-p.punchIn),0);return(<div key={u.id} className="card" style={{flex:1,minWidth:130,padding:"14px",borderTop:`3px solid ${u.color}`}}><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}><div style={{width:26,height:26,borderRadius:9,background:u.color+"18",color:u.color,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:12}}>{u.name[0]}</div><div style={{fontWeight:600,fontSize:13}}>{u.name}{u.role==="driver"&&<span style={{fontSize:10,color:"#8E8E93",marginLeft:4}}>🚐</span>}</div></div><div style={{fontSize:18,fontWeight:700,color:"#007AFF"}}>{fmtHours(wkMs)}</div><div style={{fontSize:10,color:"#8E8E93"}}>{dateRange==="week"?"cette semaine":dateRange==="lastWeek"?"semaine passée":dateRange==="month"?"ce mois":"période"}</div></div>);})}
