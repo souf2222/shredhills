@@ -455,8 +455,14 @@ export default function App() {
 
   const removeStop = async (id) => {
     if (confirm("Supprimer cet arrêt ?")) {
-      await deleteStop(id);
-      showToast("Arrêt supprimé");
+      console.log("Deleting stop:", id);
+      try {
+        await deleteStop(id);
+        showToast("Arrêt supprimé");
+      } catch (e) {
+        console.error("Delete stop error:", e);
+        showToast("Erreur: " + e.message);
+      }
     }
   };
 
@@ -480,8 +486,14 @@ export default function App() {
 
   const handleDeleteOrder = async (id) => {
     if (confirm("Supprimer cette commande ?")) {
-      await deleteOrder(id);
-      showToast("Commande supprimée");
+      console.log("Deleting order:", id);
+      try {
+        await deleteOrder(id);
+        showToast("Commande supprimée");
+      } catch (e) {
+        console.error("Delete error:", e);
+        showToast("Erreur: " + e.message);
+      }
     }
   };
 
@@ -996,7 +1008,7 @@ export default function App() {
         {/* ÉQUIPE */}
         {adminTab==="team"&&(<div>
           <p style={{fontSize:13,color:"#8E8E93",marginBottom:16}}>Gérer les profils, codes et NIP.</p>
-          {users.map(u=>{const wk=Date.now()-(new Date().getDay()||7)*DAY;const eps=punches[u.id]||[];const wkMs=(u.role==="employee"||u.role==="driver")?eps.filter(p=>p.punchIn>=wk&&p.punchOut).reduce((a,p)=>a+(p.punchOut-p.punchIn),0):null;const roleLabel=u.role==="admin"?"⚙️ Admin":u.role==="accountant"?"📊 Comptable":u.role==="driver"?"🚐 Livreur":"👷 Employé";return(<div key={u.id} className="card" style={{marginBottom:10,borderLeft:`4px solid ${u.color}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}><div style={{display:"flex",alignItems:"center",gap:12}}><div style={{width:44,height:44,borderRadius:14,background:u.color+"18",color:u.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:800,flexShrink:0}}>{u.name[0]}</div><div><div style={{fontWeight:700,fontSize:15}}>{u.name}</div><div style={{display:"flex",alignItems:"center",gap:6,marginTop:2}}><span style={{fontFamily:"monospace",fontSize:11,color:"#8E8E93",background:"#F2F2F7",padding:"2px 7px",borderRadius:7}}>{u.id}</span><span style={{fontSize:11,color:"#8E8E93"}}>{roleLabel}</span></div><div style={{display:"flex",alignItems:"center",gap:6,marginTop:3}}><span style={{fontSize:11,color:"#C7C7CC"}}>NIP :</span><span style={{fontFamily:"monospace",fontSize:12,fontWeight:700,background:"#F2F2F7",padding:"2px 8px",borderRadius:7,letterSpacing:"2px"}}>{"●●●●"}</span>{wkMs!==null&&<span style={{fontSize:11,color:"#8E8E93"}}>· {fmtHours(wkMs)} sem.</span>}</div></div></div><div style={{display:"flex",gap:8}}><button className="btn btn-outline" style={{fontSize:13,padding:"8px 16px",color:"#FF3B30",borderColor:"#FF3B30"}} onClick={()=>{if(confirm(`Supprimer ${u.name} ?`)){deleteUser(u.id);}}}>🗑</button><button className="btn btn-outline" style={{fontSize:13,padding:"8px 16px"}} onClick={()=>setEditUserModal({...u})}>✏️ Modifier</button></div></div></div>);})}
+          {users.map(u=>{const wk=Date.now()-(new Date().getDay()||7)*DAY;const eps=punches[u.id]||[];const wkMs=(u.role==="employee"||u.role==="driver")?eps.filter(p=>p.punchIn>=wk&&p.punchOut).reduce((a,p)=>a+(p.punchOut-p.punchIn),0):null;const roleLabel=u.role==="admin"?"⚙️ Admin":u.role==="accountant"?"📊 Comptable":u.role==="driver"?"🚐 Livreur":"👷 Employé";return(<div key={u.id} className="card" style={{marginBottom:10,borderLeft:`4px solid ${u.color}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}><div style={{display:"flex",alignItems:"center",gap:12}}><div style={{width:44,height:44,borderRadius:14,background:u.color+"18",color:u.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:800,flexShrink:0}}>{u.name[0]}</div><div><div style={{fontWeight:700,fontSize:15}}>{u.name}</div><div style={{display:"flex",alignItems:"center",gap:6,marginTop:2}}><span style={{fontFamily:"monospace",fontSize:11,color:"#8E8E93",background:"#F2F2F7",padding:"2px 7px",borderRadius:7}}>{u.id}</span><span style={{fontSize:11,color:"#8E8E93"}}>{roleLabel}</span></div><div style={{display:"flex",alignItems:"center",gap:6,marginTop:3}}><span style={{fontSize:11,color:"#C7C7CC"}}>NIP :</span><span style={{fontFamily:"monospace",fontSize:12,fontWeight:700,background:"#F2F2F7",padding:"2px 8px",borderRadius:7,letterSpacing:"2px"}}>{"●●●●"}</span>{wkMs!==null&&<span style={{fontSize:11,color:"#8E8E93"}}>· {fmtHours(wkMs)} sem.</span>}</div></div></div><div style={{display:"flex",gap:8}}><button className="btn btn-outline" style={{fontSize:13,padding:"8px 16px",color:"#FF3B30",borderColor:"#FF3B30"}} onClick={()=>{if(confirm(`Supprimer ${u.name} ?`)){console.log("Deleting user:", u.id);deleteUser(u.id).catch(e=>console.error(e));}}}>🗑</button><button className="btn btn-outline" style={{fontSize:13,padding:"8px 16px"}} onClick={()=>setEditUserModal({...u})}>✏️ Modifier</button></div></div></div>);})}
         </div>)}
 
         {/* HISTORIQUE */}
