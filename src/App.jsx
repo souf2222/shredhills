@@ -489,6 +489,7 @@ export default function App() {
       console.log("Deleting order:", id);
       try {
         await deleteOrder(id);
+        console.log("Delete completed for:", id);
         showToast("Commande supprimée");
       } catch (e) {
         console.error("Delete error:", e);
