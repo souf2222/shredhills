@@ -37,18 +37,18 @@ export function useFirestore() {
     const done = () => { loaded++; if (loaded >= 5) setLoading(false); };
 
     const unsubUsers = onSnapshot(collection(db, "users"), snap => {
-      setUsers(snap.docs.map(d => ({ ...d.data(), _id: d.id })));
+      setUsers(snap.docs.map(d => ({ ...d.data(), id: d.id })));
       done();
     });
 
     const unsubOrders = onSnapshot(
       query(collection(db, "orders"), orderBy("createdAt", "desc")),
-      snap => { setOrders(snap.docs.map(d => ({ ...d.data(), _id: d.id }))); done(); }
+      snap => { setOrders(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done(); }
     );
 
     const unsubStops = onSnapshot(
       query(collection(db, "stops"), orderBy("createdAt", "desc")),
-      snap => { setStops(snap.docs.map(d => ({ ...d.data(), _id: d.id }))); done(); }
+      snap => { setStops(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done(); }
     );
 
     const unsubPunches = onSnapshot(collection(db, "punches"), snap => {
@@ -60,7 +60,7 @@ export function useFirestore() {
 
     const unsubPurchases = onSnapshot(
       query(collection(db, "purchases"), orderBy("submittedAt", "desc")),
-      snap => { setPurchases(snap.docs.map(d => ({ ...d.data(), _id: d.id }))); done(); }
+      snap => { setPurchases(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done(); }
     );
 
     return () => { unsubUsers(); unsubOrders(); unsubStops(); unsubPunches(); unsubPurchases(); };
