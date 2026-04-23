@@ -75,6 +75,10 @@ export function useFirestore() {
     await setDoc(doc(db, "users", user.id), user, { merge: true });
   };
 
+  const deleteUser = async (id) => {
+    await deleteDoc(doc(db, "users", id));
+  };
+
   // ── ORDERS ────────────────────────────────────────────────────────────────
   const addOrder = async (order) => {
     await addDoc(collection(db, "orders"), { ...order, createdAt: serverTimestamp() });
@@ -139,7 +143,7 @@ export function useFirestore() {
 
   return {
     users, orders, stops, punches, purchases, loading,
-    saveUser, updateUser,
+    saveUser, updateUser, deleteUser,
     addOrder, updateOrder, deleteOrder,
     addStop, updateStop, deleteStop,
     getPunchSessions, addPunchSession, updatePunchSession, closePunchSession,
