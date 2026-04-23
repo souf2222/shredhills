@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   shredhills:
     build:
@@ -8,7 +6,7 @@ services:
     container_name: shredhills
     restart: unless-stopped
     ports:
-      - "3000:80"
+      - "3005:3000"
     environment:
       - REACT_APP_FIREBASE_API_KEY=${REACT_APP_FIREBASE_API_KEY}
       - REACT_APP_FIREBASE_AUTH_DOMAIN=${REACT_APP_FIREBASE_AUTH_DOMAIN}
