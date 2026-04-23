@@ -95,8 +95,17 @@ export function useFirestore() {
     const docRef = doc(db, "orders", id);
     console.log("Doc ref path:", docRef.path);
     
+    // First, let's see what orders actually exist
     const snapshot = await getDoc(docRef);
     console.log("Doc exists before delete:", snapshot.exists(), "doc id:", snapshot.id);
+    
+    // If not exists, let's log what we think the ID is vs what's in DB
+    if (!snapshot.exists()) {
+      console.log("Document with ID", id, "not found!");
+      // Try to fetch all orders to see what's there
+      const allSnap = await getDocs(query(collection(db, "orders"), orderBy("createdAt", "desc")));
+      console.log("All orders in DB:", allSnap.docs.map(d => d.id));
+    }
     
     await deleteDoc(docRef);
     console.log("Firestore deleteDoc completed");
