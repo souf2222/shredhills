@@ -1,21 +1,23 @@
-# Build stage
-FROM node:20-alpine as build
+FROM node:20-alpine AS base
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+FROM base AS deps
+COPY package*.json package-lock.json* ./
 RUN npm ci
 
-# Copy source
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ENV GENERATE_SOURCEMAP=false
 RUN npm run build
 
-# Production stage
-FROM nginx:alpine
-COPY --from=build /app/build /usr/share/nginx/html
+FROM base AS runner
+WORKDIR /app
 
-# Copy nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+RUN npm install -g serve
 
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+COPY --from=builder /app/build ./build
+
+EXPOSE 3000
+CMD ["serve", "-s", "build", "-l", "3000"]
