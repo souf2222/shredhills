@@ -93,16 +93,13 @@ export function useFirestore() {
   const deleteOrder = async (id) => {
     console.log("Firestore deleteOrder called with:", id);
     const docRef = doc(db, "orders", id);
-    console.log("Doc ref:", docRef);
+    console.log("Doc ref path:", docRef.path);
     
     const snapshot = await getDoc(docRef);
-    console.log("Doc exists before delete:", snapshot.exists(), snapshot.data());
+    console.log("Doc exists before delete:", snapshot.exists(), "doc id:", snapshot.id);
     
     await deleteDoc(docRef);
     console.log("Firestore deleteDoc completed");
-    
-    const snapshotAfter = await getDoc(docRef);
-    console.log("Doc exists after delete:", snapshotAfter.exists());
   };
 
   // ── STOPS ─────────────────────────────────────────────────────────────────
