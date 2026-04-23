@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import {
   collection, doc, onSnapshot, setDoc, updateDoc,
-  deleteDoc, addDoc, serverTimestamp, query, orderBy
+  deleteDoc, addDoc, serverTimestamp, query, orderBy, getDoc
 } from "firebase/firestore";
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../firebase";
@@ -94,8 +94,15 @@ export function useFirestore() {
     console.log("Firestore deleteOrder called with:", id);
     const docRef = doc(db, "orders", id);
     console.log("Doc ref:", docRef);
+    
+    const snapshot = await getDoc(docRef);
+    console.log("Doc exists before delete:", snapshot.exists(), snapshot.data());
+    
     await deleteDoc(docRef);
     console.log("Firestore deleteDoc completed");
+    
+    const snapshotAfter = await getDoc(docRef);
+    console.log("Doc exists after delete:", snapshotAfter.exists());
   };
 
   // ── STOPS ─────────────────────────────────────────────────────────────────
