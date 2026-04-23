@@ -459,6 +459,7 @@ export default function App() {
       try {
         await deleteStop(id);
         showToast("Arrêt supprimé");
+        window.location.reload();
       } catch (e) {
         console.error("Delete stop error:", e);
         showToast("Erreur: " + e.message);
@@ -491,8 +492,8 @@ export default function App() {
         await deleteOrder(id);
         console.log("Delete completed for:", id);
         showToast("Commande supprimée");
-        // Force refresh by toggling a dummy state
-        setOrders(orders.filter(o => o.id !== id));
+        // Refresh the page to reflect changes
+        window.location.reload();
       } catch (e) {
         console.error("Delete error:", e);
         showToast("Erreur: " + e.message);

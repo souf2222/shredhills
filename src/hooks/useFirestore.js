@@ -157,7 +157,7 @@ export function useFirestore() {
   };
 
   return {
-    users, orders, stops, punches, purchases, loading,
+    users, setUsers, orders, setOrders, stops, setStops, punches, setPunches, purchases, setPurchases, loading,
     saveUser, updateUser, deleteUser,
     addOrder, updateOrder, deleteOrder,
     addStop, updateStop, deleteStop,
