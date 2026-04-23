@@ -491,6 +491,8 @@ export default function App() {
         await deleteOrder(id);
         console.log("Delete completed for:", id);
         showToast("Commande supprimée");
+        // Force refresh by toggling a dummy state
+        setOrders(orders.filter(o => o.id !== id));
       } catch (e) {
         console.error("Delete error:", e);
         showToast("Erreur: " + e.message);
