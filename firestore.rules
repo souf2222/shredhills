@@ -1,8 +1,30 @@
+// firestore.rules
+// Paste these rules into Firebase Console → Firestore Database → Rules
+//
+// Policy : the app is an internal tool; every authenticated user is trusted
+// read/write on business collections. Fine-grained authorization is enforced
+// in the React layer (`AuthContext.can(...)` / `isAdmin()` / `hasJob(...)`).
+// If you later need to lock this down server-side (recommended once the team
+// grows), start by restricting `users` writes to admins and `purchases`
+// decisions to accountants.
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Known collections used by the app. Only signed-in users may read/write.
+    match /users/{uid}                  { allow read, write: if request.auth != null; }
+    match /orders/{id}                  { allow read, write: if request.auth != null; }
+    match /stops/{id}                   { allow read, write: if request.auth != null; }
+    match /punches/{uid}                { allow read, write: if request.auth != null; }
+    match /purchases/{id}               { allow read, write: if request.auth != null; }
+    match /events/{id}                  { allow read, write: if request.auth != null; }
+    match /purchaseCategories/{id}      { allow read, write: if request.auth != null; }
+
+    // Everything else is denied by default — no silent `allow read, write`
+    // wildcard so accidentally-created collections can't be abused.
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }
