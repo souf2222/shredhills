@@ -1,9 +1,11 @@
 // src/pages/EventsPage.jsx
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { fmtEventDate, fmtEventTime, daysUntil, DAY } from "../utils/helpers";
+import { fmtEventDate, fmtEventTime, daysUntil, DAY, dayStart } from "../utils/helpers";
 import { COUNTRIES, CountryFlag, getCountry } from "../utils/countries";
 import { MetaTags } from "../components/MetaTags";
+import { PageHeader } from "../components/PageHeader";
+import { useListFilter } from "../hooks/useListFilter";
 
 const EVENT_COLORS = ["#007AFF","#34C759","#FF9500","#FF3B30","#AF52DE","#FF2D55","#00C7BE","#5856D6","#111"];
 
@@ -581,6 +583,11 @@ function EventModal({ event, users, onSave, onDelete, onClose, currentUserId }) 
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}T${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
   };
 
+  const toDateOnlyInput = (ts) => {
+    const d = new Date(ts);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  };
+
   const toggleUser = (uid) => {
     const cur = form.assignedTo || [];
     set("assignedTo", cur.includes(uid) ? cur.filter(x => x !== uid) : [...cur, uid]);
@@ -668,14 +675,54 @@ function EventModal({ event, users, onSave, onDelete, onClose, currentUserId }) 
           <div><label className="lbl">Description</label><textarea className="inp" rows={2} placeholder="Détails supplémentaires…" value={form.description || ""} onChange={e => set("description", e.target.value)} style={{ resize:"none" }}/></div>
           <div><label className="lbl">Lieu</label><input className="inp" placeholder="Ville, adresse…" value={form.location || ""} onChange={e => set("location", e.target.value)}/></div>
 
+          {/* All day toggle */}
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <input
+              type="checkbox"
+              id="allDay"
+              checked={form.allDay || false}
+              onChange={e => {
+                const checked = e.target.checked;
+                if (checked) {
+                  setForm(f => ({
+                    ...f,
+                    allDay: true,
+                    startDate: dayStart(f.startDate),
+                    endDate: dayStart(f.endDate),
+                  }));
+                } else {
+                  setForm(f => ({
+                    ...f,
+                    allDay: false,
+                    endDate: f.endDate <= f.startDate ? f.startDate + 3600000 : f.endDate,
+                  }));
+                }
+              }}
+              style={{ width:18, height:18, cursor:"pointer" }}
+            />
+            <label htmlFor="allDay" className="lbl" style={{ marginBottom:0, cursor:"pointer" }}>
+              Toute la journée
+            </label>
+          </div>
+
           <div style={{ display:"flex", gap:12 }}>
             <div style={{ flex:1 }}>
               <label className="lbl">Début *</label>
-              <input type="datetime-local" className="inp" value={toDateInput(form.startDate)} onChange={e => set("startDate", new Date(e.target.value).getTime())}/>
+              <input
+                type={form.allDay ? "date" : "datetime-local"}
+                className="inp"
+                value={form.allDay ? toDateOnlyInput(form.startDate) : toDateInput(form.startDate)}
+                onChange={e => set("startDate", form.allDay ? new Date(e.target.value + "T00:00:00").getTime() : new Date(e.target.value).getTime())}
+              />
             </div>
             <div style={{ flex:1 }}>
               <label className="lbl">Fin</label>
-              <input type="datetime-local" className="inp" value={toDateInput(form.endDate)} onChange={e => set("endDate", new Date(e.target.value).getTime())}/>
+              <input
+                type={form.allDay ? "date" : "datetime-local"}
+                className="inp"
+                value={form.allDay ? toDateOnlyInput(form.endDate) : toDateInput(form.endDate)}
+                onChange={e => set("endDate", form.allDay ? new Date(e.target.value + "T00:00:00").getTime() : new Date(e.target.value).getTime())}
+              />
             </div>
           </div>
 
@@ -742,15 +789,9 @@ export function EventsPage({ events, users, addEvent, updateEvent, deleteEvent, 
   // Whether clicking a card opens any modal at all.
   const canOpen   = canManage || canView;
 
-  const [view,       setView]       = useState("list");
-  const [modal,      setModal]      = useState(null); // null | "new" | event object
-  const [filterText, setFilterText] = useState("");
-
-  const filtered = events.filter(e =>
-    !filterText ||
-    e.title?.toLowerCase().includes(filterText.toLowerCase()) ||
-    e.location?.toLowerCase().includes(filterText.toLowerCase())
-  );
+  const [modal, setModal] = useState(null); // null | "new" | event object
+  const filter = useListFilter(events, ["title", "location"]);
+  const filtered = filter.items;
 
   const handleSave = async (form) => {
     try {
@@ -780,27 +821,15 @@ export function EventsPage({ events, users, addEvent, updateEvent, deleteEvent, 
 
   return (
     <div>
-      {/* Toolbar */}
-      <div style={{ display:"flex", gap:10, marginBottom:16, flexWrap:"wrap", alignItems:"center" }}>
-        <div className="tabs" style={{ flex:1, minWidth:200 }}>
-          {[["list","≡ Liste"],["calendar","📅 Calendrier"],["cards","⊞ Grille"]].map(([v,l]) => (
-            <button key={v} className={`tab ${view===v?"on":""}`} onClick={() => setView(v)}>{l}</button>
-          ))}
-        </div>
-        <input className="inp" placeholder="Rechercher…" value={filterText} onChange={e => setFilterText(e.target.value)}
-          style={{ maxWidth:200 }}/>
-        {canManage && (
-          <button className="btn btn-primary" style={{ padding:"10px 18px" }} onClick={() => setModal("new")}>
-            + Événement
-          </button>
-        )}
-      </div>
+      <PageHeader
+        title="Événements"
+        total={filter.total}
+        filteredCount={filter.count}
+        search={{ value: filter.text, onChange: filter.setText, placeholder: "Rechercher…" }}
+        button={canManage ? { text: "+ Événement", onClick: () => setModal("new") } : null}
+      />
 
-      {/* Views — `canManage` here just means "make rows clickable". Viewers
-          can also open a (read-only) modal, so we pass `canOpen` instead. */}
-      {view === "list"     && <ListView     events={filtered} onEdit={setModal} canManage={canOpen}/>}
-      {view === "calendar" && <CalendarView events={filtered} onEdit={setModal} canManage={canOpen}/>}
-      {view === "cards"    && <CardsView    events={filtered} onEdit={setModal} canManage={canOpen}/>}
+      <ListView events={filtered} onEdit={setModal} canManage={canOpen}/>
 
       {/* Modal — managers get the full editor; viewers get a read-only sheet.
           The "new" sentinel always opens the editor (only managers can trigger it). */}

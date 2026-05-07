@@ -1,5 +1,5 @@
 // src/components/CategoriesManager.jsx
-// CRUD panel for purchase categories. Used from AdminPage (admin / accountant).
+// CRUD panel for purchase categories. Used from DashboardPage (admin / accountant).
 import { useState } from "react";
 import { Modal } from "./Modal";
 

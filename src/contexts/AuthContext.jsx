@@ -2,14 +2,14 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { auth, onAuthStateChanged, loginWithEmail, logout as firebaseLogout } from "../firebase";
 import { db } from "../firebase";
-import { doc, getDoc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [firebaseUser, setFirebaseUser] = useState(null);
+  const [firebaseUser, setFirebaseUser] = useState(() => auth?.currentUser ?? null);
   const [userProfile,  setUserProfile]  = useState(null);
-  const [authLoading,  setAuthLoading]  = useState(true);
+  const [authLoading,  setAuthLoading]  = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {

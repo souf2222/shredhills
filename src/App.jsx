@@ -2,9 +2,7 @@
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { useFirestore } from "./hooks/useFirestore";
 import { LoginPage } from "./pages/LoginPage";
-import { AdminPage } from "./pages/AdminPage";
-import { EmployeePage } from "./pages/EmployeePage";
-import { DriverPage } from "./pages/DriverPage";
+import { DashboardPage } from "./pages/DashboardPage";
 import { Logo } from "./components/Logo";
 import "./styles/globals.css";
 import "./seed"; // exposes window.seedDatabase()
@@ -27,17 +25,7 @@ function AppRouter() {
   if (authLoading) return <LoadingScreen/>;
   if (!userProfile) return <LoginPage/>;
 
-  // Choose page based on primary function / role.
-  // Priority: admin > (has any management perm) → AdminPage; driver-only → DriverPage; else EmployeePage
-  const isAdmin = userProfile.role === "admin";
-  const hasMgmt = ["canManageUsers","canManageOrders","canManageEvents","canManagePurchases","canManageDeliveries","canViewReports"]
-    .some(p => userProfile.permissions?.[p]);
-  const jobs = userProfile.jobs || [];
-  const isPrimarilyDriver = jobs.includes("driver") && !jobs.includes("employee") && !hasMgmt && !isAdmin;
-
-  if (isAdmin || hasMgmt) return <AdminPage db={fsData}/>;
-  if (isPrimarilyDriver)  return <DriverPage db={fsData}/>;
-  return <EmployeePage db={fsData}/>;
+  return <DashboardPage db={fsData}/>;
 }
 
 export default function App() {

@@ -83,13 +83,13 @@ L'app combine trois axes :
 - **`role`** : `admin` (super-utilisateur) ou `user`.
 - **`jobs`** : un ou plusieurs métiers — `admin`, `accountant`, `employee`, `driver`.
   Détermine quelle interface est affichée.
-- **`permissions`** : flags fins (`canManageOrders`, `canManageEvents`, `canViewReports`, …).
+- **`permissions`** : flags fins (`canManageOrders`, `canManageEvents`, `canViewReports`, `canViewTasks`, `canClockIn`, `canSubmitPurchases`, …).
   Un `admin` les a toutes implicitement.
 
-Le routage se fait dans `src/App.jsx` :
-- `admin` ou un utilisateur avec une permission de gestion → **AdminPage**
-- uniquement `driver` → **DriverPage**
-- sinon → **EmployeePage**
+Le routage est unifié dans `src/App.jsx` :
+- Quel que soit le rôle, tout le monde arrive sur **DashboardPage**
+- Seuls les onglets et les actions correspondant aux permissions de l'utilisateur s'affichent
+- `can()` décide dynamiquement : pas de page séparée admin / employé / livreur
 
 ---
 
@@ -133,7 +133,7 @@ shredhills/
 ├── public/
 │   └── index.html
 ├── src/
-│   ├── App.jsx                  ← Routeur racine (Auth → page selon rôle)
+│   ├── App.jsx                  ← Routeur racine (Auth → DashboardPage)
 │   ├── index.js                 ← Point d'entrée React
 │   ├── firebase.js              ← Init Firebase (Auth, Firestore, Storage)
 │   ├── seed.js                  ← window.seedDatabase() — comptes/données initiales
@@ -143,10 +143,31 @@ shredhills/
 │   │   └── useFirestore.js      ← Toutes les opérations CRUD Firestore
 │   ├── pages/
 │   │   ├── LoginPage.jsx
-│   │   ├── AdminPage.jsx
-│   │   ├── EmployeePage.jsx
-│   │   ├── DriverPage.jsx
-│   │   └── EventsPage.jsx
+│   │   ├── DashboardPage.jsx    ← Page unique, onglets selon permissions
+│   │   ├── EventsPage.jsx
+│   │   ├── GestionRoutesSection.jsx
+│   │   ├── MesRoutesSection.jsx
+│   │   └── SettingsPage.jsx
+│   ├── dashboard/               ← Sections & modals extraits du monolithe
+│   │   ├── constants.js         ← PERMISSION_LABELS, JOB_OPTIONS, COLORS
+│   │   ├── modals/
+│   │   │   ├── UserModal.jsx
+│   │   │   ├── OrderModal.jsx
+│   │   │   ├── NewStopModal.jsx
+│   │   │   ├── EditStopModal.jsx
+│   │   │   ├── NewPurchaseModal.jsx
+│   │   │   ├── RefusePurchaseModal.jsx
+│   │   │   └── DeletePurchaseModal.jsx
+│   │   └── sections/
+│   │       ├── DashboardStatStrip.jsx
+│   │       ├── CommandesSection.jsx
+│   │       ├── MaTachesSection.jsx
+│   │       ├── EquipeSection.jsx
+│   │       ├── TourneesSection.jsx
+│   │       ├── PurchasesSubmitView.jsx
+│   │       ├── PurchasesAdminView.jsx
+│   │       ├── FeuillesTempsSection.jsx
+│   │       └── PointageSection.jsx
 │   ├── components/              ← Logo, Nav, PunchSection, SignatureCanvas, Toast
 │   ├── utils/helpers.js
 │   └── styles/globals.css

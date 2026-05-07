@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { fmtTime } from "../utils/helpers";
+import { PageHeader } from "../components/PageHeader";
+import { FilterBar } from "../components/FilterBar";
 
 export function GestionRoutesSection({ stops, drivers, addStop, updateStop, deleteStop, showToast }) {
   const [newStopModal, setNewStopModal] = useState(false);
@@ -7,6 +9,8 @@ export function GestionRoutesSection({ stops, drivers, addStop, updateStop, dele
   const [newStop, setNewStop] = useState({
     type: "delivery", clientName: "", clientPhone: "", address: "", instructions: "", assignedTo: "", scheduledDate: null, order: 0
   });
+  const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
@@ -68,13 +72,51 @@ export function GestionRoutesSection({ stops, drivers, addStop, updateStop, dele
     await updateStop(swapped.id, { order: orderA });
   };
 
+  const filteredStops = useMemo(() => {
+    const norm = searchText.trim().toLowerCase();
+    return stops.filter(s => {
+      if (statusFilter !== "all" && s.status !== statusFilter) return false;
+      if (!norm) return true;
+      return (
+        (s.clientName || "").toLowerCase().includes(norm) ||
+        (s.address || "").toLowerCase().includes(norm) ||
+        (s.instructions || "").toLowerCase().includes(norm)
+      );
+    });
+  }, [stops, searchText, statusFilter]);
+
+  const visibleDrivers = drivers.filter(d => filteredStops.some(s => s.assignedTo === d.id));
+  const totalStops = stops.length;
+  const filteredCount = filteredStops.length;
+
   return (
     <div>
-      {drivers.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <button className="btn btn-purple" onClick={() => { setNewStop(n => ({ ...n, assignedTo: drivers[0]?.id || "" })); setNewStopModal(true); }}>+ Arrêt</button>
-        </div>
-      )}
+      <PageHeader
+        title="Tournées"
+        total={totalStops}
+        filteredCount={filteredCount}
+        search={{ value: searchText, onChange: setSearchText, placeholder: "Rechercher un arrêt…" }}
+        button={{ text: "+ Arrêt", onClick: () => { setNewStop(n => ({ ...n, assignedTo: drivers[0]?.id || "" })); setNewStopModal(true); }, className: "btn btn-purple" }}
+      />
+
+      <FilterBar
+        hasFilters={statusFilter !== "all" || searchText.trim().length > 0}
+        onReset={() => { setStatusFilter("all"); setSearchText(""); }}
+        filters={[
+          {
+            key: "status",
+            type: "toggle-group",
+            value: statusFilter,
+            onChange: setStatusFilter,
+            options: [
+              { value: "all", label: "Toutes", color: "#6D6D72" },
+              { value: "pending", label: "À faire", color: "#AF52DE" },
+              { value: "doing", label: "En cours", color: "#FF9500" },
+              { value: "completed", label: "Complétés", color: "#34C759" },
+            ],
+          },
+        ]}
+      />
 
       {drivers.length === 0 && (
         <div className="card" style={{ textAlign: "center", padding: 40, color: "#8E8E93" }}>
@@ -85,7 +127,10 @@ export function GestionRoutesSection({ stops, drivers, addStop, updateStop, dele
       )}
 
       {drivers.map(driver => {
-        const driverStops = stops.filter(s => s.assignedTo === driver.id);
+        const hasAny = visibleDrivers.some(d => d.id === driver.id);
+        if (!hasAny && (searchText.trim() || statusFilter !== "all")) return null;
+
+        const driverStops = filteredStops.filter(s => s.assignedTo === driver.id);
 
         const stopsByDate = {};
         const noDateStops = [];
