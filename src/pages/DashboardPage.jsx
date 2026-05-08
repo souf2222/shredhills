@@ -30,9 +30,12 @@ import { NewExpenseModal } from "../dashboard/modals/NewExpenseModal";
 import { RefuseExpenseModal } from "../dashboard/modals/RefuseExpenseModal";
 import { DeleteExpenseModal } from "../dashboard/modals/DeleteExpenseModal";
 
-import { todayStr, toDateKey } from "../utils/helpers";
+import { useDashboardTabs } from "../hooks/useDashboardTabs";
+import { useDashboardTabs } from "../hooks/useDashboardTabs";
+import { todayStr, toDateKey, DAY } from "../utils/helpers";
 
 export function DashboardPage({ db: fsData }) {
+  const { userProfile, can } = useAuth();
   const {
     users, orders, stops, punches, purchases, events, categories,
     updateUser, deleteUser,
@@ -78,8 +81,8 @@ export function DashboardPage({ db: fsData }) {
   const showToast = (m) => setToast(m);
 
   // Derived
-  const employees = users.filter(u => u.role !== "admin");
-  const drivers   = users.filter(u => u.role !== "admin");
+  const employees = users.filter(u => u.jobs?.includes("employee"));
+  const drivers   = users.filter(u => u.jobs?.includes("driver"));
   const myOrders  = orders.filter(o => o.assignedTo === userProfile.id);
   const adminActive = orders.filter(o => o.status !== "done");
   const pendingExpenses = purchases.filter(p => p.status === "pending").length;
@@ -97,7 +100,7 @@ export function DashboardPage({ db: fsData }) {
   }
   if (can("canManageDeliveries")) {
     pushTab("tournees", "🚐 Tournées");
-  } else if (userProfile.role === "user") {
+  } else if (userProfile.jobs?.includes("driver")) {
     const myPending = stops.filter(s => s.assignedTo === userProfile.id && s.status !== "completed").length;
     pushTab("tournees", `🚐 Tournée${myPending > 0 ? ` (${myPending})` : ""}`);
   }
@@ -307,7 +310,7 @@ export function DashboardPage({ db: fsData }) {
         {tab === "tournees" && can("canManageDeliveries") && (
           <GestionRoutesSection stops={stops} drivers={drivers} addStop={addStop} updateStop={updateStop} deleteStop={deleteStop} showToast={showToast} />
         )}
-        {tab === "tournees" && !can("canManageDeliveries") && userProfile.role === "user" && (
+        {tab === "tournees" && !can("canManageDeliveries") && userProfile.jobs?.includes("driver") && (
           <MesRoutesSection stops={stops} updateStop={updateStop} userProfile={userProfile} showToast={showToast} />
         )}
 
