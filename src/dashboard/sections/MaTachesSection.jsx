@@ -80,7 +80,7 @@ export function MaTachesSection({ orders, onStart, onFinish }) {
       {tachesFiltered.filter(o => o.status !== "done").sort((a,b) => (a.deadline||9e15)-(b.deadline||9e15)).map(order => {
         const dl = getDL(order.deadline);
         return (
-          <div key={order.id} className="oc card" style={{ marginBottom:12, borderTop:`3px solid ${dl.color}` }}>
+          <div key={order.id} className={`oc card ${order.status === "inprogress" ? "bt-blue" : "bt-orange"}`} style={{ marginBottom:12 }}>
             <div style={{ display:"flex", gap:8, marginBottom:8, flexWrap:"wrap", alignItems:"center" }}>
               <span style={{ fontFamily:"monospace", fontSize:10, color:"#C7C7CC" }}>{order.id}</span>
               <span className={`badge ${order.status==="inprogress"?"bi":"bp"}`}>{order.status==="inprogress"?"⚡ En cours":"⏸ En attente"}</span>
@@ -108,15 +108,15 @@ export function MaTachesSection({ orders, onStart, onFinish }) {
         <div style={{ marginTop:24 }}>
           <p className="sec">Terminées ({tachesFiltered.filter(o => o.status === "done").length})</p>
           {tachesFiltered.filter(o => o.status === "done").map(o => (
-            <div key={o.id} className="card" style={{ marginBottom:10, opacity:.6, borderLeft:"3px solid #34C759" }}>
-              <div style={{ display:"flex", justifyContent:"space-between" }}>
-                <div>
-                  <p style={{ fontWeight:600, fontSize:14, textDecoration:"line-through", color:"#8E8E93" }}>{o.clientName}</p>
-                  <p style={{ fontSize:12, color:"#C7C7CC" }}>{o.description}</p>
-                </div>
-                <span style={{ fontFamily:"monospace", fontSize:12, color:"#34C759" }}>⏱ {fmtMs(o.elapsed)}</span>
+          <div key={o.id} className="card bt-green" style={{ marginBottom:10, opacity:.6 }}>
+            <div style={{ display:"flex", justifyContent:"space-between" }}>
+              <div>
+                <p style={{ fontWeight:600, fontSize:14, textDecoration:"line-through", color:"#8E8E93" }}>{o.clientName}</p>
+                <p style={{ fontSize:12, color:"#C7C7CC" }}>{o.description}</p>
               </div>
+              <span style={{ fontFamily:"monospace", fontSize:12, color:"#34C759" }}>⏱ {fmtMs(o.elapsed)}</span>
             </div>
+          </div>
           ))}
         </div>
       )}

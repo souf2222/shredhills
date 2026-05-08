@@ -28,15 +28,22 @@ export function CommandesSection({ orders, employees, commandesSearch, setComman
     return (a.deadline||9e15)-(b.deadline||9e15);
   });
 
+  const statusBorderClass = (order) => {
+    if (order.status === "done") return "bt-green";
+    if (!order.assignedTo) return "bt-purple";
+    if (order.status === "inprogress") return "bt-blue";
+    if (order.status === "pending") return "bt-orange";
+    return "bt-gray";
+  };
+
   const renderOrder = (order) => {
     const dl = getDL(order.deadline);
     const days = daysUntil(order.deadline);
     const isDone = order.status === "done";
     return (
-      <div key={order.id} className="oc card" onClick={() => onOrderClick(order)}
+      <div key={order.id} className={`oc card ${statusBorderClass(order)}`} onClick={() => onOrderClick(order)}
         style={{
-          marginBottom:12, borderTop: isDone ? undefined : `3px solid ${dl.color}`, borderLeft: isDone ? "3px solid #34C759" : undefined,
-          cursor:"pointer", transition:"box-shadow .15s, transform .15s", opacity: isDone ? .75 : 1,
+          marginBottom:12, cursor:"pointer", transition:"box-shadow .15s, transform .15s", opacity: isDone ? .75 : 1,
         }}
         onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,.1)"; if (isDone) e.currentTarget.style.opacity = 1; }}
         onMouseLeave={e => { e.currentTarget.style.boxShadow = ""; if (isDone) e.currentTarget.style.opacity = .75; }}
@@ -126,8 +133,18 @@ export function CommandesSection({ orders, employees, commandesSearch, setComman
             const pending = sortOrders(baseFiltered.filter(o => o.status === "pending"));
             const inprogress = sortOrders(baseFiltered.filter(o => o.status === "inprogress"));
             const done = sortOrders(baseFiltered.filter(o => o.status === "done"));
+            const unassigned = sortOrders(baseFiltered.filter(o => !o.assignedTo));
             return (
               <>
+                {unassigned.length > 0 && (
+                  <div>
+                    <h3 style={groupTitleStyle("#AF52DE")}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#AF52DE", display: "inline-block" }}></span>
+                      Non assignées ({unassigned.length})
+                    </h3>
+                    {unassigned.map(renderOrder)}
+                  </div>
+                )}
                 {pending.length > 0 && (
                   <div>
                     <h3 style={groupTitleStyle("#FF9500")}>

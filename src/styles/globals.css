@@ -12,6 +12,14 @@ body {
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-thumb { background: #D1D1D6; border-radius: 2px; }
 
+/* ─── Status top borders (universal for lists) ─── */
+.bt-orange { border-top: 3px solid #FF9500; }
+.bt-blue   { border-top: 3px solid #007AFF; }
+.bt-green  { border-top: 3px solid #34C759; }
+.bt-red    { border-top: 3px solid #FF3B30; }
+.bt-purple { border-top: 3px solid #AF52DE; }
+.bt-gray   { border-top: 3px solid #8E8E93; }
+
 /* ─── Cards ─── */
 .card {
   background: white;
