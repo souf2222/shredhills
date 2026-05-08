@@ -11,7 +11,7 @@ export function FeuillesTempsSection({ users, punches, dateRange, setDateRange, 
   return (
     <div>
       <PageHeader
-        title="⏱️ Feuilles de temps"
+        title="Gestion des feuilles de temps"
         total={clockInUsers.length}
         filteredCount={clockInUsers.length}
         filters={[

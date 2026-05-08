@@ -23,7 +23,7 @@ export function ExpensesSubmitView({ purchases, categories, onNewExpense, onPhot
   return (
     <div>
       <PageHeader
-        title="🧾 Mes dépenses"
+        title="Mes dépenses"
         total={purchases.length}
         filteredCount={filtered.length}
         search={{ value: searchText, onChange: setSearchText, placeholder: "Rechercher…" }}
@@ -41,9 +41,9 @@ export function ExpensesSubmitView({ purchases, categories, onNewExpense, onPhot
                 onChange: setStatusFilter,
                 options: [
                   { value: "all", label: `Toutes (${purchases.length})`, color: "#6D6D72" },
-                  { value: "pending", label: `⏳ En attente (${pendingCount})`, color: "#FF9500" },
-                  { value: "approved", label: `✅ Approuvées (${approvedCount})`, color: "#34C759" },
-                  { value: "refused", label: `❌ Refusées (${refusedCount})`, color: "#FF3B30" },
+                  { value: "pending", label: `En attente (${pendingCount})`, color: "#FF9500" },
+                  { value: "approved", label: `Approuvées (${approvedCount})`, color: "#34C759" },
+                  { value: "refused", label: `Refusées (${refusedCount})`, color: "#FF3B30" },
                 ],
               },
             ]}

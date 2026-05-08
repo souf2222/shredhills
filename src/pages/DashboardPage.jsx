@@ -30,8 +30,6 @@ import { NewExpenseModal } from "../dashboard/modals/NewExpenseModal";
 import { RefuseExpenseModal } from "../dashboard/modals/RefuseExpenseModal";
 import { DeleteExpenseModal } from "../dashboard/modals/DeleteExpenseModal";
 
-import { useDashboardTabs } from "../hooks/useDashboardTabs";
-import { useDashboardTabs } from "../hooks/useDashboardTabs";
 import { todayStr, toDateKey, DAY } from "../utils/helpers";
 
 export function DashboardPage({ db: fsData }) {
@@ -82,7 +80,7 @@ export function DashboardPage({ db: fsData }) {
 
   // Derived
   const employees = users.filter(u => u.jobs?.includes("employee"));
-  const drivers   = users.filter(u => u.jobs?.includes("driver"));
+  const drivers   = users.filter(u => u.permissions?.canViewDeliveries || u.permissions?.canManageDeliveries);
   const myOrders  = orders.filter(o => o.assignedTo === userProfile.id);
   const adminActive = orders.filter(o => o.status !== "done");
   const pendingExpenses = purchases.filter(p => p.status === "pending").length;
@@ -91,6 +89,9 @@ export function DashboardPage({ db: fsData }) {
   const tabs = [];
   const pushTab = (id, label) => tabs.push([id, label]);
 
+  if (can("canClockIn")) {
+        pushTab("pointage", "🕐 Ma feuille de temps");
+  }
   if (can("canManageEvents") || can("canViewEvents")) {
     const count = events.filter(e => e.endDate >= Date.now()).length;
     pushTab("evenements", `📅 Événements${count > 0 ? ` (${count})` : ""}`);
@@ -99,16 +100,14 @@ export function DashboardPage({ db: fsData }) {
     pushTab("commandes", `📦 Commandes${adminActive.length > 0 ? ` (${adminActive.length})` : ""}`);
   }
   if (can("canManageDeliveries")) {
-    pushTab("tournees", "🚐 Tournées");
-  } else if (userProfile.jobs?.includes("driver")) {
-    const myPending = stops.filter(s => s.assignedTo === userProfile.id && s.status !== "completed").length;
-    pushTab("tournees", `🚐 Tournée${myPending > 0 ? ` (${myPending})` : ""}`);
+    pushTab("gestion-tournees", "🚐 Gestion des tournées");
+  }
+  if (can("canViewDeliveries")) {
+    const myPending = stops.filter(s => s.assignedTo === userProfile.id && s.status !== "completed" && s.status !== "failed").length;
+    pushTab("mes-tournees", `🚐 Mes tournées${myPending > 0 ? ` (${myPending})` : ""}`);
   }
   if (can("canViewTasks") && !can("canManageOrders")) {
     pushTab("taches", `📋 Tâches${myOrders.filter(o => o.status !== "done").length > 0 ? ` (${myOrders.filter(o => o.status !== "done").length})` : ""}`);
-  }
-  if (can("canManageUsers")) {
-    pushTab("equipe", "👥 Équipe");
   }
   if (can("canSubmitExpenses")) {
     pushTab("mes-depenses", "🧾 Mes dépenses");
@@ -116,11 +115,11 @@ export function DashboardPage({ db: fsData }) {
   if (can("canManageExpenses")) {
     pushTab("depenses", `📋 Gestion des dépenses${pendingExpenses > 0 ? ` (${pendingExpenses})` : ""}`);
   }
-  if (can("canViewReports")) {
-    pushTab("feuilles-de-temps", "⏱️ Feuilles de temps");
+  if (can("canManageReports")) {
+    pushTab("feuilles-de-temps", "⏱️ Gestion des feuilles de temps");
   }
-  if (can("canClockIn")) {
-    pushTab("pointage", "🕐 Pointage");
+  if (can("canManageUsers")) {
+    pushTab("equipe", "👥 Équipe");
   }
   pushTab("parametres", "⚙️ Paramètres");
 
@@ -262,14 +261,40 @@ export function DashboardPage({ db: fsData }) {
 
   // Task actions for MaTachesSection
   const startOrder = async (id) => {
-    await updateOrder(id, { status:"inprogress", startTime:Date.now(), elapsed:0 });
+    const order = orders.find(o => o.id === id);
+    if (!order) return;
+    // Prevent starting if another task is already in progress
+    const otherInProgress = orders.find(o => o.assignedTo === userProfile.id && o.status === "inprogress" && o.id !== id);
+    if (otherInProgress) {
+      showToast("⚠️ Une autre tâche est déjà en cours. Mets-la en pause d'abord.");
+      return;
+    }
+    const data = { status: "inprogress" };
+    if (order.status === "pending") {
+      data.startTime = Date.now();
+      data.elapsed = 0;
+    } else if (order.status === "paused") {
+      // Resume: update startTime so elapsed stays correct
+      data.startTime = Date.now();
+    }
+    await updateOrder(id, data);
     showToast("⏱ Chrono démarré !");
+  };
+  const pauseOrder = async (id) => {
+    const order = orders.find(o => o.id === id);
+    if (!order || !order.startTime) return;
+    const elapsed = Date.now() - order.startTime + (order.elapsed || 0);
+    await updateOrder(id, { status: "paused", elapsed });
+    showToast("⏸ Chrono en pause");
   };
   const finishOrder = async (id) => {
     const order = orders.find(o => o.id === id);
     if (!order) return;
-    const elapsed = order.startTime ? Date.now() - order.startTime + (order.elapsed || 0) : (order.elapsed || 0);
-    await updateOrder(id, { status:"done", endTime:Date.now(), elapsed });
+    let elapsed = order.elapsed || 0;
+    if (order.startTime && order.status === "inprogress") {
+      elapsed = Date.now() - order.startTime + elapsed;
+    }
+    await updateOrder(id, { status: "done", endTime: Date.now(), elapsed });
     showToast("✅ Commande terminée !");
   };
 
@@ -307,15 +332,15 @@ export function DashboardPage({ db: fsData }) {
           />
         )}
 
-        {tab === "tournees" && can("canManageDeliveries") && (
+        {tab === "gestion-tournees" && can("canManageDeliveries") && (
           <GestionRoutesSection stops={stops} drivers={drivers} addStop={addStop} updateStop={updateStop} deleteStop={deleteStop} showToast={showToast} />
         )}
-        {tab === "tournees" && !can("canManageDeliveries") && userProfile.jobs?.includes("driver") && (
+        {tab === "mes-tournees" && can("canViewDeliveries") && (
           <MesRoutesSection stops={stops} updateStop={updateStop} userProfile={userProfile} showToast={showToast} />
         )}
 
         {tab === "taches" && can("canViewTasks") && !can("canManageOrders") && (
-          <MaTachesSection orders={myOrders} onStart={startOrder} onFinish={finishOrder} />
+          <MaTachesSection orders={myOrders} onStart={startOrder} onPause={pauseOrder} onFinish={finishOrder} />
         )}
 
         {tab === "equipe" && can("canManageUsers") && (
@@ -348,7 +373,7 @@ export function DashboardPage({ db: fsData }) {
           />
         )}
 
-        {tab === "feuilles-de-temps" && can("canViewReports") && (
+        {tab === "feuilles-de-temps" && can("canManageReports") && (
           <FeuillesTempsSection
             users={users} punches={punches}
             dateRange={dateRange} setDateRange={setDateRange}

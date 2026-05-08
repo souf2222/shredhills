@@ -11,7 +11,7 @@ const N = Date.now();
 
 const DEFAULT_PERMISSIONS = {
   canManageUsers: false, canManageOrders: false, canManageEvents: false, canViewEvents: false,
-  canManageExpenses: false, canManageDeliveries: false, canViewReports: false,
+  canManageExpenses: false, canManageDeliveries: false, canManageReports: false,
   canClockIn: false, canViewTasks: false, canSubmitExpenses: false
 };
 
@@ -20,7 +20,7 @@ const ADMIN_PERMISSIONS = Object.fromEntries(Object.keys(DEFAULT_PERMISSIONS).ma
 const ACCOUNTANT_PERMISSIONS = {
   ...DEFAULT_PERMISSIONS,
   canManageUsers: true, canManageExpenses: true, canViewEvents: true,
-  canViewReports: true, canClockIn: true, canSubmitExpenses: true,
+  canManageReports: true, canClockIn: true, canSubmitExpenses: true,
 };
 
 const EMPLOYEE_PERMISSIONS = {

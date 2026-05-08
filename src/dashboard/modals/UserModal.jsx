@@ -13,7 +13,7 @@ export function UserModal({ user, onSave, onDelete, onClose, currentUserId, show
     color:"#FF6B35", pin:"",
     permissions: {
       canManageUsers: false, canManageOrders: false, canManageEvents: false, canViewEvents: true,
-      canManageExpenses: false, canManageDeliveries: false, canViewReports: false,
+      canManageExpenses: false, canManageDeliveries: false, canViewDeliveries: false, canManageReports: false,
       canClockIn: true, canViewTasks: true, canSubmitExpenses: true,
     }
   });
@@ -47,19 +47,31 @@ export function UserModal({ user, onSave, onDelete, onClose, currentUserId, show
     } else if (tpl === "accountant") {
       setForm(f => ({ ...f, role:"user", permissions: {
         canManageUsers:true, canManageOrders:false, canManageEvents:false, canViewEvents:true,
-        canManageExpenses:true, canManageDeliveries:false, canViewReports:true,
+        canManageExpenses:true, canManageDeliveries:false, canViewDeliveries:false, canManageReports:true,
         canClockIn:true, canViewTasks:false, canSubmitExpenses:true,
       }}));
     } else if (tpl === "employee") {
       setForm(f => ({ ...f, role:"user", permissions: {
         canManageUsers:false, canManageOrders:false, canManageEvents:false, canViewEvents:true,
-        canManageExpenses:false, canManageDeliveries:false, canViewReports:false,
+        canManageExpenses:false, canManageDeliveries:false, canViewDeliveries:false, canManageReports:false,
         canClockIn:true, canViewTasks:true, canSubmitExpenses:true,
       }}));
     } else if (tpl === "driver") {
       setForm(f => ({ ...f, role:"user", permissions: {
         canManageUsers:false, canManageOrders:false, canManageEvents:false, canViewEvents:true,
-        canManageExpenses:false, canManageDeliveries:true, canViewReports:false,
+        canManageExpenses:false, canManageDeliveries:true, canViewDeliveries:true, canManageReports:false,
+        canClockIn:true, canViewTasks:false, canSubmitExpenses:false,
+      }}));
+    } else if (tpl === "employee") {
+      setForm(f => ({ ...f, role:"user", permissions: {
+        canManageUsers:false, canManageOrders:false, canManageEvents:false, canViewEvents:true,
+        canManageExpenses:false, canManageDeliveries:false, canViewDeliveries:false, canManageReports:false,
+        canClockIn:true, canViewTasks:true, canSubmitExpenses:true,
+      }}));
+    } else if (tpl === "driver") {
+      setForm(f => ({ ...f, role:"user", permissions: {
+        canManageUsers:false, canManageOrders:false, canManageEvents:false, canViewEvents:true,
+        canManageExpenses:false, canManageDeliveries:true, canViewDeliveries:true, canManageReports:false,
         canClockIn:true, canViewTasks:false, canSubmitExpenses:false,
       }}));
     }
@@ -140,22 +152,20 @@ export function UserModal({ user, onSave, onDelete, onClose, currentUserId, show
                   style={{ flex:1, justifyContent:"center", background:form.role===v?"#111":"white", color:form.role===v?"white":"#3A3A3C", border:"1.5px solid", borderColor:form.role===v?"#111":"#E5E5EA" }}>{l}</button>
               ))}
             </div>
-            {form.role === "admin" && <p style={{ fontSize:12, color:"#8E8E93", marginTop:6 }}>Les admins ont toutes les permissions automatiquement.</p>}
+            {form.role === "admin" && <p style={{ fontSize:12, color:"#8E8E93", marginTop:6 }}>Les permissions admin sont aussi configurables ci-dessous.</p>}
           </div>
 
-          {form.role !== "admin" && (
-            <div>
-              <label className="lbl">Permissions</label>
-              <div style={{ background:"#F9F9F9", borderRadius:12, padding:"12px 14px", display:"flex", flexDirection:"column", gap:10 }}>
-                {Object.entries(PERMISSION_LABELS).map(([key, label]) => (
-                  <label key={key} style={{ display:"flex", alignItems:"center", gap:10, fontSize:14, cursor:"pointer" }}>
-                    <input type="checkbox" checked={form.permissions?.[key] || false} onChange={e => setPerm(key, e.target.checked)} style={{ width:18, height:18 }}/>
-                    <span>{label}</span>
-                  </label>
-                ))}
-              </div>
+          <div>
+            <label className="lbl">Permissions</label>
+            <div style={{ background:"#F9F9F9", borderRadius:12, padding:"12px 14px", display:"flex", flexDirection:"column", gap:10 }}>
+              {Object.entries(PERMISSION_LABELS).map(([key, label]) => (
+                <label key={key} style={{ display:"flex", alignItems:"center", gap:10, fontSize:14, cursor:"pointer" }}>
+                  <input type="checkbox" checked={form.permissions?.[key] || false} onChange={e => setPerm(key, e.target.checked)} style={{ width:18, height:18 }}/>
+                  <span>{label}</span>
+                </label>
+              ))}
             </div>
-          )}
+          </div>
 
           <div>
             <label className="lbl">Couleur</label>

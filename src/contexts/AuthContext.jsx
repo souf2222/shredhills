@@ -49,7 +49,6 @@ export function AuthProvider({ children }) {
 
   const can = (permission) => {
     if (!userProfile) return false;
-    if (userProfile.role === "admin") return true;
     return !!userProfile.permissions?.[permission];
   };
 

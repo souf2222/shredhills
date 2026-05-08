@@ -8,6 +8,7 @@ export function CommandesSection({ orders, employees, commandesSearch, setComman
   const inprogressCount = orders.filter(o => o.status === "inprogress").length;
   const doneCount = orders.filter(o => o.status === "done").length;
   const unassignedCount = orders.filter(o => !o.assignedTo).length;
+  const overdueCount = orders.filter(o => o.status !== "done" && o.deadline <= Date.now()).length;
 
   const baseFiltered = orders.filter(o =>
     [o.clientName, o.clientEmail, o.description].join(" ").toLowerCase().includes(commandesSearch.trim().toLowerCase())
@@ -19,6 +20,7 @@ export function CommandesSection({ orders, employees, commandesSearch, setComman
     if (commandesStatus === "inprogress") return baseFiltered.filter(o => o.status === "inprogress");
     if (commandesStatus === "done") return baseFiltered.filter(o => o.status === "done");
     if (commandesStatus === "unassigned") return baseFiltered.filter(o => !o.assignedTo);
+    if (commandesStatus === "overdue") return baseFiltered.filter(o => o.status !== "done" && o.deadline <= Date.now());
     return baseFiltered;
   })();
 
@@ -56,7 +58,7 @@ export function CommandesSection({ orders, employees, commandesSearch, setComman
               {!isDone && dl.overdue && <span style={{ fontSize:11, color:"#FF3B30", fontWeight:700 }}>⚠️ En retard</span>}
             </div>
             <p style={{ fontWeight:700, fontSize:15 }}>{order.clientName}<span style={{ fontWeight:400, fontSize:13, color:"#8E8E93", marginLeft:8 }}>{order.clientEmail}</span></p>
-            <p style={{ fontSize:13, color:"#6D6D72", marginTop:2 }}>{order.description}</p>
+            <p style={{ fontSize:13, color:"#6D6D72", marginTop:2, whiteSpace:"pre-line" }}>{order.description}</p>
           </div>
           {!isDone && (
             <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:8 }} onClick={e => e.stopPropagation()}>
@@ -114,10 +116,11 @@ export function CommandesSection({ orders, employees, commandesSearch, setComman
               { value: "pending", label: `En attente (${pendingCount})`, color: "#FF9500" },
               { value: "inprogress", label: `En cours (${inprogressCount})`, color: "#007AFF" },
               { value: "done", label: `Terminées (${doneCount})`, color: "#34C759" },
-              { value: "unassigned", label: `Non assignées (${unassignedCount})`, color: "#AF52DE" }
+              { value: "unassigned", label: `Non assignées (${unassignedCount})`, color: "#AF52DE" },
+              { value: "overdue", label: `En retard (${overdueCount})`, color: "#FF3B30" }
             ]}
-          ]} />
-        ]}
+           ]} />
+         ]}
       />
 
       {statusFiltered.length === 0 && (
@@ -138,37 +141,33 @@ export function CommandesSection({ orders, employees, commandesSearch, setComman
               <>
                 {unassigned.length > 0 && (
                   <div>
-                    <h3 style={groupTitleStyle("#AF52DE")}>
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#AF52DE", display: "inline-block" }}></span>
+                    <p className="sec" style={{ marginBottom:12 }}>
                       Non assignées ({unassigned.length})
-                    </h3>
+                    </p>
                     {unassigned.map(renderOrder)}
                   </div>
                 )}
                 {pending.length > 0 && (
                   <div>
-                    <h3 style={groupTitleStyle("#FF9500")}>
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#FF9500", display: "inline-block" }}></span>
+                    <p className="sec" style={{ marginBottom:12 }}>
                       En attente ({pending.length})
-                    </h3>
+                    </p>
                     {pending.map(renderOrder)}
                   </div>
                 )}
                 {inprogress.length > 0 && (
                   <div>
-                    <h3 style={groupTitleStyle("#007AFF")}>
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#007AFF", display: "inline-block" }}></span>
+                    <p className="sec" style={{ marginBottom:12 }}>
                       En cours ({inprogress.length})
-                    </h3>
+                    </p>
                     {inprogress.map(renderOrder)}
                   </div>
                 )}
                 {done.length > 0 && (
                   <div>
-                    <h3 style={groupTitleStyle("#34C759")}>
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#34C759", display: "inline-block" }}></span>
+                    <p className="sec" style={{ marginBottom:12 }}>
                       Terminées ({done.length})
-                    </h3>
+                    </p>
                     {done.map(renderOrder)}
                   </div>
                 )}

@@ -37,11 +37,11 @@ export function ExpensesAdminView({ purchases, users, categories, onApprove, onR
   return (
     <div>
       <PageHeader
-        title="📋 Gestion des dépenses"
+        title="Gestion des dépenses"
         total={purchases.length}
         filteredCount={filtered.length}
         search={{ value: searchText, onChange: setSearchText, placeholder: "Rechercher…" }}
-        button={{ text: "🏷️ Gérer les catégories", onClick: onManageCategories, className: "btn btn-outline" }}
+        button={{ text: "Gérer les catégories", onClick: onManageCategories, className: "btn btn-primary" }}
         filters={[
           <FilterBar
             key="fb-ea"
@@ -55,9 +55,9 @@ export function ExpensesAdminView({ purchases, users, categories, onApprove, onR
                 onChange: setStatusFilter,
                 options: [
                   { value: "all", label: `Toutes (${purchases.length})`, color: "#6D6D72" },
-                  { value: "pending", label: `⏳ En attente (${pendingCount})`, color: "#FF9500" },
-                  { value: "approved", label: "✅ Approuvées", color: "#34C759" },
-                  { value: "refused", label: "❌ Refusées", color: "#FF3B30" },
+                  { value: "pending", label: `En attente (${pendingCount})`, color: "#FF9500" },
+                  { value: "approved", label: "Approuvées", color: "#34C759" },
+                  { value: "refused", label: "Refusées", color: "#FF3B30" },
                 ],
               },
               {
@@ -66,7 +66,7 @@ export function ExpensesAdminView({ purchases, users, categories, onApprove, onR
                 value: categoryFilter,
                 onChange: setCategoryFilter,
                 options: [
-                  { value: "all", label: "🏷️ Toutes les catégories" },
+                  { value: "all", label: "Toutes les catégories" },
                   ...categories.map(c => ({ value: c.id, label: `${c.emoji} ${c.label}` })),
                 ],
               },
@@ -76,7 +76,7 @@ export function ExpensesAdminView({ purchases, users, categories, onApprove, onR
                 value: empFilter,
                 onChange: setEmpFilter,
                 options: [
-                  { value: "all", label: "👥 Tous les employés" },
+                  { value: "all", label: "Tous les employés" },
                   ...empOptions.map(e => ({ value: e.id, label: e.name })),
                 ],
               },

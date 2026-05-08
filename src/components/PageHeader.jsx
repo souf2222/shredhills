@@ -7,12 +7,22 @@
  *  - total          number             Total items (not filtered). Shown as subtitle when no filter active.
  *  - filteredCount  number             Shown as subtitle when different from total.
  *  - button         { text, onClick, icon?, className?, disabled?, title? } | null
- *  - search         { value, onChange, placeholder? } | null
  *  - filters        ReactNode[]        FilterBar(s) rendered below the subtitle.
- *  - children       ReactNode          Extra elements rendered between search & button.
+ *  - children       ReactNode          Extra elements rendered between title & button.
  */
-export function PageHeader({ title, total, filteredCount, button, search, filters, children }) {
-  const isFiltered = typeof filteredCount === "number" && typeof total === "number" && filteredCount !== total;
+export function PageHeader({
+  title,
+  total,
+  filteredCount,
+  button,
+  filters,
+  children,
+}) {
+  const isFiltered =
+    typeof filteredCount === "number" &&
+    typeof total === "number" &&
+    filteredCount !== total;
+
   const subtitle = isFiltered
     ? `${filteredCount} résultat${filteredCount > 1 ? "s" : ""} sur ${total}`
     : typeof total === "number"
@@ -22,25 +32,11 @@ export function PageHeader({ title, total, filteredCount, button, search, filter
   return (
     <div>
       <div
-        style={{
-          display: "flex",
-          gap: 10,
-          marginBottom: subtitle ? 4 : 16,
-          flexWrap: "wrap",
-          alignItems: "center",
-        }}
+        className="page-header-row"
+        style={{ marginBottom: subtitle ? 4 : 16 }}
       >
-        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{title}</h2>
-        <div style={{ flex: 1, minWidth: 200 }} />
-        {search && (
-          <input
-            className="inp"
-            placeholder={search.placeholder || "Rechercher…"}
-            value={search.value}
-            onChange={(e) => search.onChange(e.target.value)}
-            style={{ maxWidth: 220 }}
-          />
-        )}
+        <h2 className="page-header-title">{title}</h2>
+        <div className="page-header-spacer" />
         {children}
         {button && (
           <button
@@ -50,23 +46,14 @@ export function PageHeader({ title, total, filteredCount, button, search, filter
             disabled={button.disabled}
             title={button.title}
           >
-            {button.icon ? <span style={{ marginRight: 6 }}>{button.icon}</span> : null}
+            {button.icon ? (
+              <span style={{ marginRight: 6 }}>{button.icon}</span>
+            ) : null}
             {button.text}
           </button>
         )}
       </div>
-      {subtitle && (
-        <p
-          style={{
-            fontSize: 13,
-            color: "#8E8E93",
-            margin: "0 0 16px 0",
-            minHeight: 18,
-          }}
-        >
-          {subtitle}
-        </p>
-      )}
+      {subtitle && <p className="page-header-subtitle">{subtitle}</p>}
       {filters}
     </div>
   );

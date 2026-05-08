@@ -19,6 +19,8 @@ body {
 .bt-red    { border-top: 3px solid #FF3B30; }
 .bt-purple { border-top: 3px solid #AF52DE; }
 .bt-gray   { border-top: 3px solid #8E8E93; }
+.bt-yellow { border-top: 3px solid #FFCC00; }
+.bt-yellow { border-top: 3px solid #FFCC00; }
 
 /* ─── Cards ─── */
 .card {
@@ -114,7 +116,7 @@ body {
 .ba { background: #EDFFF3; color: #34C759; }
 .br { background: #FFF5F5; color: #FF3B30; }
 .bw { background: #FFFBEF; color: #FF9500; }
-.bv { background: #F5F0FF; color: #AF52DE; }
+.bo { background: #FFF9E6; color: #FF9500; }
 
 /* ─── Nav ─── */
 .nav {
@@ -185,6 +187,23 @@ body {
 @keyframes shake{ 0%,100% { transform:translateX(0); } 25% { transform:translateX(-8px); } 75% { transform:translateX(8px); } }
 @keyframes spin { to { transform:rotate(360deg); } }
 @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
+/* ─── iOS Drag Grip ─── */
+.drag-grip {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.drag-grip:active {
+  cursor: grabbing;
+}
+.drag-grip svg circle {
+  transition: fill .15s;
+}
+.drag-grip:active svg circle {
+  fill: #8E8E93;
+}
 
 .oc  { animation: fup .25s ease; }
 .sp  { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,.3); border-top-color:white; border-radius:50%; animation: spin .6s linear infinite; }
@@ -375,4 +394,50 @@ body {
 }
 .sb-drawer.on { transform: translateX(0); }
 @media (min-width: 960px) { .sb-drawer { display: none; } }
+
+/* ─── PageHeader ─── */
+.page-header-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.page-header-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+.page-header-spacer {
+  flex: 1;
+  min-width: 200px;
+}
+.page-header-subtitle {
+  font-size: 13px;
+  color: #8E8E93;
+  margin: 0 0 16px 0;
+  min-height: 18px;
+}
+
+/* mobile */
+@media (max-width: 600px) {
+  .page-header-row {
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+  .page-header-title {
+    flex: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .page-header-spacer {
+    flex: 1;
+    min-width: 0;
+  }
+  .page-header-row > button {
+    flex-shrink: 0;
+  }
+}
 

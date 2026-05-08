@@ -32,19 +32,19 @@ export function NewStopModal({ newStop, setNewStop, drivers, tourneeDate, setTou
             </div>
           </div>
           <div>
-            <label className="lbl">Livreur</label>
+            <label className="lbl">Livreur <span style={{ color: "#8E8E93", fontWeight: 400 }}>(optionnel)</span></label>
             <select className="sel" value={newStop.assignedTo} onChange={e => setNewStop(n => ({...n,assignedTo:e.target.value}))}>
-              <option value="">— Choisir —</option>
-              {drivers.map(d => <option key={d.id} value={d.id}>{d.displayName}</option>)}
+              <option value="">Non assigné</option>
+              {drivers.filter(d => d.permissions?.canViewDeliveries).map(d => <option key={d.id} value={d.id}>{d.displayName}</option>)}
             </select>
           </div>
           <div>
             <label className="lbl">Date</label>
             <input type="date" className="inp" value={getDateStr()} onChange={e => setDate(e.target.value)}/>
           </div>
-          <div><label className="lbl">Client</label><input className="inp" placeholder="Sophie Tremblay" value={newStop.clientName} onChange={e => setNewStop(n => ({...n,clientName:e.target.value}))}/></div>
+          <div><label className="lbl">Client <span style={{ color: "#FF3B30" }}>*</span></label><input className="inp" placeholder="Sophie Tremblay" value={newStop.clientName} onChange={e => setNewStop(n => ({...n,clientName:e.target.value}))}/></div>
           <div><label className="lbl">Téléphone</label><input className="inp" type="tel" placeholder="514-555-0101" value={newStop.clientPhone} onChange={e => setNewStop(n => ({...n,clientPhone:e.target.value}))}/></div>
-          <div><label className="lbl">Adresse</label><input className="inp" placeholder="1234 rue Ste-Catherine" value={newStop.address} onChange={e => setNewStop(n => ({...n,address:e.target.value}))}/></div>
+          <div><label className="lbl">Adresse <span style={{ color: "#FF3B30" }}>*</span></label><input className="inp" placeholder="1234 rue Ste-Catherine" value={newStop.address} onChange={e => setNewStop(n => ({...n,address:e.target.value}))}/></div>
           <div><label className="lbl">Instructions</label><input className="inp" placeholder="Sonner 2 fois…" value={newStop.instructions} onChange={e => setNewStop(n => ({...n,instructions:e.target.value}))}/></div>
           <div style={{ display:"flex", gap:10, marginTop:4 }}>
             <button className="btn btn-outline" style={{ flex:1, justifyContent:"center" }} onClick={onClose}>Annuler</button>

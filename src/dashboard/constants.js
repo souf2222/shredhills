@@ -5,12 +5,13 @@ export const PERMISSION_LABELS = {
   canManageUsers:        "Gérer les utilisateurs",
   canManageOrders:       "Gérer les commandes",
   canManageEvents:       "Gérer les événements",
-  canViewEvents:         "Voir les événements",
-  canManageExpenses:     "Approuver les dépenses",
   canManageDeliveries:   "Gérer les livraisons",
-  canViewReports:        "Voir les feuilles de temps",
-  canClockIn:            "Pointage (entrée/sortie)",
+  canManageExpenses:     "Gérer les dépenses",
+  canManageReports:      "Gérer les feuilles de temps",
+  canViewEvents:         "Voir les événements",
+  canViewDeliveries:     "Voir mes tournées",
   canViewTasks:          "Voir les tâches",
+  canClockIn:            "Ma feuille de temps",
   canSubmitExpenses:     "Soumettre des dépenses",
 };
 

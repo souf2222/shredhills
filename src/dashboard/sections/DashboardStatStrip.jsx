@@ -28,7 +28,7 @@ export function DashboardStatStrip({ events, orders, stops, users, punches, user
       {isClockedIn && (
         <div className="card" style={{ marginBottom:16, padding:"12px 14px", display:"flex", alignItems:"center", gap:10, background:"#F0F9FF", borderLeft:"4px solid #007AFF" }}>
           <span style={{ width:10, height:10, borderRadius:"50%", background:"#34C759", display:"inline-block", animation:"blink 1s ease infinite" }} />
-          <span style={{ fontWeight:600, fontSize:14 }}>Tu es en service — bon travail !</span>
+          <span style={{ fontWeight:600, fontSize:14 }}>Tu es en service — bonne journée !</span>
         </div>
       )}
     </div>

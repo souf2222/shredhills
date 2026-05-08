@@ -140,8 +140,11 @@ export const deleteStorageFile = async (path) => {
   try {
     await deleteObject(ref(storage, path));
   } catch (err) {
-    // Ignore "object-not-found" to make deletes idempotent.
-    if (err?.code !== "storage/object-not-found") throw err;
+    // Ignore "object-not-found" and permission errors so deleting a Firestore
+    // doc is never blocked by a stale/missing Storage file.
+    if (err?.code !== "storage/object-not-found" && err?.code !== "storage/unauthorized") throw err;
+    // eslint-disable-next-line no-console
+    console.warn("Storage delete skipped:", err.code, path);
   }
 };
 

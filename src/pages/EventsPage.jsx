@@ -59,7 +59,7 @@ export function EventsPage({ events, users, addEvent, updateEvent, deleteEvent, 
   return (
     <div>
       <PageHeader
-        title="📅 Événements"
+        title="Événements"
         total={events.length}
         filteredCount={filteredEvents.length}
         search={{ value: filter.text, onChange: filter.setText, placeholder: "Rechercher…" }}

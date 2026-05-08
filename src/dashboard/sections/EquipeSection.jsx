@@ -11,7 +11,7 @@ export function EquipeSection({ users, userProfile, equipeSearch, setEquipeSearc
   return (
     <div>
       <PageHeader
-        title="👥 Équipe"
+        title="Équipe"
         total={users.length}
         filteredCount={equipeFiltered.length}
         search={{ value: equipeSearch, onChange: setEquipeSearch, placeholder: "Rechercher..." }}

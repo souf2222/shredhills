@@ -28,7 +28,7 @@ export function OrderModal({ order, employees, users, onSave, onDelete, onClose 
   };
 
   const dl = getDL(form.deadline);
-  const canSubmit = form.clientName?.trim() && form.assignedTo;
+  const canSubmit = form.clientName?.trim();
 
   const submit = async () => {
     if (!canSubmit || saving) return;
@@ -80,9 +80,9 @@ export function OrderModal({ order, employees, users, onSave, onDelete, onClose 
           </div>
 
           <div>
-            <label className="lbl">Assigner à *</label>
+            <label className="lbl">Assigner à</label>
             <select className="sel" value={form.assignedTo || ""} onChange={e => set("assignedTo", e.target.value)}>
-              <option value="">— Choisir un employé —</option>
+              <option value="">Non assigné</option>
               {employees.map(emp => (
                 <option key={emp.id} value={emp.id}>{emp.displayName}</option>
               ))}

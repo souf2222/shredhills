@@ -1,6 +1,7 @@
 // src/components/PunchSection.jsx
 import { useState, useEffect, useRef } from "react";
 import { fmtMs, fmtHours, fmtTime, fmtTimeInput, dayStart, groupByDay, DAY } from "../utils/helpers";
+import { PageHeader } from "./PageHeader";
 
 function PunchEditModal({ punch, onSave, onClose }) {
   const [pIn,  setPIn]  = useState(fmtTimeInput(punch.punchIn));
@@ -81,6 +82,7 @@ export function PunchSection({ userId, punches, addPunchSession, closePunchSessi
 
   return (
     <div>
+      <PageHeader title="Ma feuille de temps" total={sessions.length} />
       <div style={{ display:"flex", gap:10, marginBottom:20 }}>
         {[
           { label:"Aujourd'hui", val:fmtHours(todayTotalMs), c:isClockedIn?"#FF9500":"#34C759" },
