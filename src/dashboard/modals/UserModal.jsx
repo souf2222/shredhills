@@ -3,7 +3,7 @@ import { useState } from "react";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../firebase";
 import { createAuthUserKeepingSession, sendPasswordReset } from "../../firebase";
-import { PERMISSION_LABELS, JOB_OPTIONS, COLORS } from "../constants";
+import { PERMISSION_LABELS, COLORS } from "../constants";
 
 export function UserModal({ user, onSave, onDelete, onClose, currentUserId, showToast }) {
   const isNew = !user?.id;

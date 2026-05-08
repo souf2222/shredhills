@@ -79,7 +79,7 @@ export function Sidebar({ tabs, active, onNavigate, subtitle, badge }) {
           </div>
           <div style={{ minWidth:0, flex:1 }}>
             <div className="sb-user-name">{userProfile?.displayName || "—"}</div>
-            <div className="sb-user-role">{userProfile?.role === "admin" ? "Administrateur" : (userProfile?.jobs || []).map(j => j === "employee" ? "Employé" : j === "driver" ? "Livreur" : j === "accountant" ? "Comptable" : j).join(" · ") || "Membre"}</div>
+            <div className="sb-user-role">{userProfile?.role === "admin" ? "Administrateur" : "Utilisateur"}</div>
           </div>
         </div>
         <button className="sb-logout" onClick={logout}>

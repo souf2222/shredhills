@@ -17,11 +17,10 @@ import { DashboardStatStrip } from "../dashboard/sections/DashboardStatStrip";
 import { CommandesSection } from "../dashboard/sections/CommandesSection";
 import { MaTachesSection } from "../dashboard/sections/MaTachesSection";
 import { EquipeSection } from "../dashboard/sections/EquipeSection";
-import { TourneesSection } from "../dashboard/sections/TourneesSection";
 import { ExpensesSubmitView } from "../dashboard/sections/ExpensesSubmitView";
 import { ExpensesAdminView } from "../dashboard/sections/ExpensesAdminView";
 import { FeuillesTempsSection } from "../dashboard/sections/FeuillesTempsSection";
-import { PointageSection } from "../dashboard/sections/PointageSection";
+import { PunchSection } from "../components/PunchSection";
 
 import { UserModal } from "../dashboard/modals/UserModal";
 import { OrderModal } from "../dashboard/modals/OrderModal";
@@ -79,8 +78,8 @@ export function DashboardPage({ db: fsData }) {
   const showToast = (m) => setToast(m);
 
   // Derived
-  const employees = users.filter(u => u.jobs?.includes("employee"));
-  const drivers   = users.filter(u => u.jobs?.includes("driver"));
+  const employees = users.filter(u => u.role !== "admin");
+  const drivers   = users.filter(u => u.role !== "admin");
   const myOrders  = orders.filter(o => o.assignedTo === userProfile.id);
   const adminActive = orders.filter(o => o.status !== "done");
   const pendingExpenses = purchases.filter(p => p.status === "pending").length;
@@ -98,7 +97,7 @@ export function DashboardPage({ db: fsData }) {
   }
   if (can("canManageDeliveries")) {
     pushTab("tournees", "🚐 Tournées");
-  } else if (userProfile.jobs?.includes("driver")) {
+  } else if (userProfile.role === "user") {
     const myPending = stops.filter(s => s.assignedTo === userProfile.id && s.status !== "completed").length;
     pushTab("tournees", `🚐 Tournée${myPending > 0 ? ` (${myPending})` : ""}`);
   }
@@ -308,7 +307,7 @@ export function DashboardPage({ db: fsData }) {
         {tab === "tournees" && can("canManageDeliveries") && (
           <GestionRoutesSection stops={stops} drivers={drivers} addStop={addStop} updateStop={updateStop} deleteStop={deleteStop} showToast={showToast} />
         )}
-        {tab === "tournees" && !can("canManageDeliveries") && userProfile.jobs?.includes("driver") && (
+        {tab === "tournees" && !can("canManageDeliveries") && userProfile.role === "user" && (
           <MesRoutesSection stops={stops} updateStop={updateStop} userProfile={userProfile} showToast={showToast} />
         )}
 
@@ -356,7 +355,7 @@ export function DashboardPage({ db: fsData }) {
         )}
 
         {tab === "pointage" && can("canClockIn") && (
-          <PointageSection
+          <PunchSection
             userId={userProfile.id}
             punches={punches}
             addPunchSession={addPunchSession}

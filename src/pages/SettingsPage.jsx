@@ -151,11 +151,7 @@ export function SettingsPage({ showToast }) {
               {firebaseUser?.email || userProfile?.email || "—"}
             </div>
             <div style={{ fontSize:12, color:"#8E8E93", marginTop:2 }}>
-              {userProfile?.role === "admin"
-                ? "Administrateur"
-                : (userProfile?.jobs || [])
-                    .map(j => j === "employee" ? "Employé" : j === "driver" ? "Livreur" : j === "accountant" ? "Comptable" : j)
-                    .join(" · ") || "Membre"}
+              {userProfile?.role === "admin" ? "Administrateur" : "Utilisateur"}
             </div>
           </div>
         </div>
