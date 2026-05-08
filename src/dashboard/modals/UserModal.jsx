@@ -9,7 +9,7 @@ export function UserModal({ user, onSave, onDelete, onClose, currentUserId, show
   const isNew = !user?.id;
   const [form, setForm] = useState(() => user || {
     email:"", password:"", displayName:"",
-    role:"user", jobs:["employee"],
+    role:"user",
     color:"#FF6B35", pin:"",
     permissions: {
       canManageUsers: false, canManageOrders: false, canManageEvents: false, canViewEvents: true,
@@ -40,28 +40,24 @@ export function UserModal({ user, onSave, onDelete, onClose, currentUserId, show
 
   const set = (k,v) => setForm(f => ({ ...f, [k]: v }));
   const setPerm = (k,v) => setForm(f => ({ ...f, permissions: { ...f.permissions, [k]: v } }));
-  const toggleJob = (jid) => {
-    const cur = form.jobs || [];
-    set("jobs", cur.includes(jid) ? cur.filter(x => x !== jid) : [...cur, jid]);
-  };
 
   const applyTemplate = (tpl) => {
     if (tpl === "admin") {
-      setForm(f => ({ ...f, role:"admin", jobs:["admin"], permissions: Object.fromEntries(Object.keys(PERMISSION_LABELS).map(k => [k, true])) }));
+      setForm(f => ({ ...f, role:"admin", permissions: Object.fromEntries(Object.keys(PERMISSION_LABELS).map(k => [k, true])) }));
     } else if (tpl === "accountant") {
-      setForm(f => ({ ...f, role:"user", jobs:["accountant"], permissions: {
+      setForm(f => ({ ...f, role:"user", permissions: {
         canManageUsers:true, canManageOrders:false, canManageEvents:false, canViewEvents:true,
         canManageExpenses:true, canManageDeliveries:false, canViewReports:true,
         canClockIn:true, canViewTasks:false, canSubmitExpenses:true,
       }}));
     } else if (tpl === "employee") {
-      setForm(f => ({ ...f, role:"user", jobs:["employee"], permissions: {
+      setForm(f => ({ ...f, role:"user", permissions: {
         canManageUsers:false, canManageOrders:false, canManageEvents:false, canViewEvents:true,
         canManageExpenses:false, canManageDeliveries:false, canViewReports:false,
         canClockIn:true, canViewTasks:true, canSubmitExpenses:true,
       }}));
     } else if (tpl === "driver") {
-      setForm(f => ({ ...f, role:"user", jobs:["driver"], permissions: {
+      setForm(f => ({ ...f, role:"user", permissions: {
         canManageUsers:false, canManageOrders:false, canManageEvents:false, canViewEvents:true,
         canManageExpenses:false, canManageDeliveries:true, canViewReports:false,
         canClockIn:true, canViewTasks:false, canSubmitExpenses:false,
@@ -78,14 +74,14 @@ export function UserModal({ user, onSave, onDelete, onClose, currentUserId, show
         const { uid } = await createAuthUserKeepingSession(form.email.trim(), form.password, form.displayName);
         await setDoc(doc(db, "users", uid), {
           email: form.email.trim(), displayName: form.displayName, role: form.role,
-          jobs: form.jobs || [], permissions: form.permissions, color: form.color,
+          permissions: form.permissions, color: form.color,
           pin: form.pin || "", createdAt: serverTimestamp(),
         });
         showToast("✅ Utilisateur créé.");
       } else {
         await onSave({
           id: user.id, displayName: form.displayName, role: form.role,
-          jobs: form.jobs || [], permissions: form.permissions, color: form.color, pin: form.pin || "",
+          permissions: form.permissions, color: form.color, pin: form.pin || "",
         });
       }
       onClose();

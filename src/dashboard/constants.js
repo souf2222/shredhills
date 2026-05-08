@@ -14,13 +14,6 @@ export const PERMISSION_LABELS = {
   canSubmitExpenses:     "Soumettre des dépenses",
 };
 
-export const JOB_OPTIONS = [
-  { id: "employee",   label: "👷 Employé" },
-  { id: "driver",     label: "🚐 Livreur" },
-  { id: "accountant", label: "📊 Comptable" },
-  { id: "admin",      label: "⚙️ Admin" },
-];
-
 export const COLORS = [
   "#FF6B35","#007AFF","#34C759","#FF9500",
   "#AF52DE","#FF3B30","#00C7BE","#5856D6","#111",

@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { fmtDate } from "../../utils/helpers";
 import { PageHeader } from "../../components/PageHeader";
 import { FilterBar } from "../../components/FilterBar";
+import { ExpenseStatusBadge } from "../../components/ExpenseStatusBadge";
 
 export function ExpensesAdminView({ purchases, users, categories, onApprove, onRefuseStart, onDelete, onPhotoClick, onManageCategories }) {
   const [statusFilter, setStatusFilter] = useState("all");
@@ -116,9 +117,7 @@ export function ExpensesAdminView({ purchases, users, categories, onApprove, onR
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:14, flexWrap:"wrap" }}>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:"flex", gap:8, marginBottom:6, alignItems:"center", flexWrap:"wrap" }}>
-                  <span className={`badge ${p.status==="approved"?"ba":p.status==="refused"?"br":"bw"}`}>
-                    {p.status==="approved"?"✅ Approuvé":p.status==="refused"?"❌ Refusé":"⏳ En attente"}
-                  </span>
+                  <ExpenseStatusBadge status={p.status} />
                   {p.categoryLabel && (
                     <span style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:20, background:`${catColor}18`, color:catColor, border:`1px solid ${catColor}30` }}>
                       {p.categoryEmoji} {p.categoryLabel}

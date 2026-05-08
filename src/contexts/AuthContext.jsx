@@ -54,10 +54,9 @@ export function AuthProvider({ children }) {
   };
 
   const isAdmin = () => userProfile?.role === "admin";
-  const hasJob  = (job) => userProfile?.jobs?.includes(job) || false;
 
   return (
-    <AuthContext.Provider value={{ firebaseUser, userProfile, authLoading, login, logout, can, isAdmin, hasJob }}>
+    <AuthContext.Provider value={{ firebaseUser, userProfile, authLoading, login, logout, can, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );

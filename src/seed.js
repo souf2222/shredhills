@@ -35,12 +35,12 @@ const DRIVER_PERMISSIONS = {
 
 // Accounts to create. Password is the same as email username for dev simplicity.
 const INITIAL_USERS = [
-  { email:"admin@shredhills.com",     password:"admin123", displayName:"Propriétaire", role:"admin", permissions:ADMIN_PERMISSIONS,      jobs:["admin"],     pin:"1234", color:"#111" },
-  { email:"compta@shredhills.com",    password:"compta123",displayName:"Comptable",    role:"user",  permissions:ACCOUNTANT_PERMISSIONS, jobs:["accountant"],pin:"5678", color:"#007AFF" },
-  { email:"alexandre@shredhills.com", password:"emp1234",  displayName:"Alexandre",    role:"user",  permissions:EMPLOYEE_PERMISSIONS,   jobs:["employee"],  pin:"0001", color:"#FF6B35" },
-  { email:"marika@shredhills.com",    password:"emp1234",  displayName:"Marika",       role:"user",  permissions:EMPLOYEE_PERMISSIONS,   jobs:["employee"],  pin:"0002", color:"#007AFF" },
-  { email:"jordan@shredhills.com",    password:"emp1234",  displayName:"Jordan",       role:"user",  permissions:EMPLOYEE_PERMISSIONS,   jobs:["employee"],  pin:"0003", color:"#34C759" },
-  { email:"kevin@shredhills.com",     password:"driver123",displayName:"Kevin",        role:"user",  permissions:DRIVER_PERMISSIONS,     jobs:["driver"],    pin:"9999", color:"#AF52DE" },
+  { email:"admin@shredhills.com",     password:"admin123", displayName:"Propriétaire", role:"admin", permissions:ADMIN_PERMISSIONS,      pin:"1234", color:"#111" },
+  { email:"compta@shredhills.com",    password:"compta123",displayName:"Comptable",    role:"user",  permissions:ACCOUNTANT_PERMISSIONS, pin:"5678", color:"#007AFF" },
+  { email:"alexandre@shredhills.com", password:"emp1234",  displayName:"Alexandre",    role:"user",  permissions:EMPLOYEE_PERMISSIONS,   pin:"0001", color:"#FF6B35" },
+  { email:"marika@shredhills.com",    password:"emp1234",  displayName:"Marika",       role:"user",  permissions:EMPLOYEE_PERMISSIONS,   pin:"0002", color:"#007AFF" },
+  { email:"jordan@shredhills.com",    password:"emp1234",  displayName:"Jordan",       role:"user",  permissions:EMPLOYEE_PERMISSIONS,   pin:"0003", color:"#34C759" },
+  { email:"kevin@shredhills.com",     password:"driver123",displayName:"Kevin",        role:"user",  permissions:DRIVER_PERMISSIONS,     pin:"9999", color:"#AF52DE" },
 ];
 
 const INITIAL_EVENTS = [
@@ -87,7 +87,6 @@ export async function seedDatabase() {
         email: u.email,
         displayName: u.displayName,
         role: u.role,
-        jobs: u.jobs,
         permissions: u.permissions,
         color: u.color,
         pin: u.pin,
@@ -141,7 +140,7 @@ export async function seedDatabase() {
   console.log("📧 COMPTES CRÉÉS - Utilise ces identifiants pour te connecter:");
   console.log("═══════════════════════════════════════════════════════");
   INITIAL_USERS.forEach(u => {
-    console.log(`  ${u.role === "admin" ? "⚙️" : u.jobs[0] === "accountant" ? "📊" : u.jobs[0] === "driver" ? "🚐" : "👷"}  ${u.email}  /  ${u.password}`);
+    console.log(`  ${u.role === "admin" ? "⚙️" : "👤"}  ${u.email}  /  ${u.password}`);
   });
   console.log("═══════════════════════════════════════════════════════");
   console.log("");

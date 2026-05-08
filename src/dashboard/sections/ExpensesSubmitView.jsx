@@ -3,6 +3,7 @@ import { useState } from "react";
 import { fmtDate } from "../../utils/helpers";
 import { PageHeader } from "../../components/PageHeader";
 import { FilterBar } from "../../components/FilterBar";
+import { ExpenseStatusBadge } from "../../components/ExpenseStatusBadge";
 
 export function ExpensesSubmitView({ purchases, categories, onNewExpense, onPhotoClick }) {
   const [statusFilter, setStatusFilter] = useState("all");
@@ -70,9 +71,7 @@ export function ExpensesSubmitView({ purchases, categories, onNewExpense, onPhot
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:12, flexWrap:"wrap" }}>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ display:"flex", gap:8, marginBottom:6, alignItems:"center", flexWrap:"wrap" }}>
-                <span className={`badge ${p.status==="approved"?"ba":p.status==="refused"?"br":"bw"}`}>
-                  {p.status==="approved"?"✅ Approuvé":p.status==="refused"?"❌ Refusé":"⏳ En attente"}
-                </span>
+                <ExpenseStatusBadge status={p.status} />
                 {p.categoryLabel && (
                   <span style={{ fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:20, background:`${p.categoryColor||"#8E8E93"}18`, color:p.categoryColor||"#8E8E93", border:`1px solid ${p.categoryColor||"#8E8E93"}30` }}>
                     {p.categoryEmoji} {p.categoryLabel}
