@@ -1,29 +1,49 @@
 // src/dashboard/sections/FeuillesTempsSection.jsx
 import { fmtHours, fmtTime, fmtDate, getDateRange, groupByDay, dayStart } from "../../utils/helpers";
+import { PageHeader } from "../../components/PageHeader";
+import { FilterBar } from "../../components/FilterBar";
 
 export function FeuillesTempsSection({ users, punches, dateRange, setDateRange, customStart, setCustomStart, customEnd, setCustomEnd }) {
   const { start: rangeStart, end: rangeEnd } = getDateRange(dateRange, customStart, customEnd);
 
+  const clockInUsers = users.filter(u => u.permissions?.canClockIn);
+
   return (
     <div>
-      <div style={{ display:"flex", gap:10, marginBottom:16, flexWrap:"wrap", alignItems:"center" }}>
-        <select value={dateRange} onChange={e => setDateRange(e.target.value)}
-          style={{ background:"white", border:"1px solid #E5E5EA", borderRadius:10, padding:"8px 12px", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
-          <option value="week">Cette semaine</option>
-          <option value="lastWeek">Semaine passée</option>
-          <option value="month">Ce mois</option>
-          <option value="custom">Personnalisé</option>
-        </select>
-        {dateRange === "custom" && (
-          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-            <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} style={{ background:"white", border:"1px solid #E5E5EA", borderRadius:10, padding:"8px 12px", fontSize:13, fontFamily:"inherit" }}/>
-            <span style={{ color:"#8E8E93" }}>à</span>
-            <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} style={{ background:"white", border:"1px solid #E5E5EA", borderRadius:10, padding:"8px 12px", fontSize:13, fontFamily:"inherit"}}/>
-          </div>
-        )}
-      </div>
+      <PageHeader
+        title="⏱️ Feuilles de temps"
+        total={clockInUsers.length}
+        filteredCount={clockInUsers.length}
+        filters={[
+          <FilterBar
+            key="fb-ft"
+            hasFilters={dateRange !== "week"}
+            onReset={() => { setDateRange("week"); setCustomStart(""); setCustomEnd(""); }}
+            filters={[
+              {
+                key: "range",
+                type: "select",
+                value: dateRange,
+                onChange: setDateRange,
+                options: [
+                  { value: "week", label: "Cette semaine" },
+                  { value: "lastWeek", label: "Semaine passée" },
+                  { value: "month", label: "Ce mois" },
+                  { value: "custom", label: "Personnalisé" },
+                ],
+              },
+              ...(dateRange === "custom" ? [{
+                key: "custom",
+                type: "date-range",
+                value: { from: customStart, to: customEnd },
+                onChange: ({ from, to }) => { setCustomStart(from); setCustomEnd(to); },
+              }] : []),
+            ]}
+          />,
+        ]}
+      />
 
-      {users.filter(u => u.permissions?.canClockIn).map(u => {
+      {clockInUsers.map(u => {
         const eps = punches[u.id] || [];
         const rangeMs = eps.filter(p => p.punchIn >= rangeStart && p.punchIn <= rangeEnd && p.punchOut).reduce((a,p) => a + (p.punchOut - p.punchIn), 0);
         const active = eps.some(s => dayStart(s.punchIn) === dayStart(Date.now()) && !s.punchOut);

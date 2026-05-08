@@ -6,12 +6,12 @@ export const PERMISSION_LABELS = {
   canManageOrders:       "Gérer les commandes",
   canManageEvents:       "Gérer les événements",
   canViewEvents:         "Voir les événements",
-  canManagePurchases:    "Approuver les achats",
+  canManageExpenses:     "Approuver les dépenses",
   canManageDeliveries:   "Gérer les livraisons",
   canViewReports:        "Voir les feuilles de temps",
   canClockIn:            "Pointage (entrée/sortie)",
   canViewTasks:          "Voir les tâches",
-  canSubmitPurchases:    "Soumettre des achats",
+  canSubmitExpenses:     "Soumettre des dépenses",
 };
 
 export const JOB_OPTIONS = [

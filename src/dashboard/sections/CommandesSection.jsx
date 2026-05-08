@@ -3,7 +3,7 @@ import { getDL, daysUntil, fmtMs } from "../../utils/helpers";
 import { PageHeader } from "../../components/PageHeader";
 import { FilterBar } from "../../components/FilterBar";
 
-export function CommandesSection({ orders, employees, commandesSearch, setCommandesSearch, commandesStatus, setCommandesStatus, onOrderClick, onReassign }) {
+export function CommandesSection({ orders, employees, commandesSearch, setCommandesSearch, commandesStatus, setCommandesStatus, onOrderClick, onReassign, onNewOrder }) {
   const adminActive = orders.filter(o => o.status !== "done");
   const adminDone   = orders.filter(o => o.status === "done");
   const commandesFiltered = (commandesStatus === "all" ? orders : commandesStatus === "active" ? adminActive : adminDone).filter(o =>
@@ -13,11 +13,11 @@ export function CommandesSection({ orders, employees, commandesSearch, setComman
   return (
     <div>
       <PageHeader
-        title="📦 Commandes"
+        title="Commandes"
         total={orders.length}
         filteredCount={commandesFiltered.length}
         search={{ value: commandesSearch, onChange: setCommandesSearch, placeholder: "Rechercher..." }}
-        button={{ label: "+ Commande", onClick: () => {} }} // modal handled by parent via button wrapper
+        button={{ text: "+ Commande", onClick: onNewOrder }}
         filters={[
           <FilterBar key="fb-c" hasFilters={commandesStatus !== "all" || commandesSearch.trim()} onReset={() => { setCommandesStatus("all"); setCommandesSearch(""); }} filters={[
             { key: "status", type: "toggle-group", value: commandesStatus, onChange: setCommandesStatus, options: [

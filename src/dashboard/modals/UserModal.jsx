@@ -13,8 +13,8 @@ export function UserModal({ user, onSave, onDelete, onClose, currentUserId, show
     color:"#FF6B35", pin:"",
     permissions: {
       canManageUsers: false, canManageOrders: false, canManageEvents: false, canViewEvents: true,
-      canManagePurchases: false, canManageDeliveries: false, canViewReports: false,
-      canClockIn: true, canViewTasks: true, canSubmitPurchases: true,
+      canManageExpenses: false, canManageDeliveries: false, canViewReports: false,
+      canClockIn: true, canViewTasks: true, canSubmitExpenses: true,
     }
   });
   const [showPwd, setShowPwd] = useState(false);
@@ -51,20 +51,20 @@ export function UserModal({ user, onSave, onDelete, onClose, currentUserId, show
     } else if (tpl === "accountant") {
       setForm(f => ({ ...f, role:"user", jobs:["accountant"], permissions: {
         canManageUsers:true, canManageOrders:false, canManageEvents:false, canViewEvents:true,
-        canManagePurchases:true, canManageDeliveries:false, canViewReports:true,
-        canClockIn:true, canViewTasks:false, canSubmitPurchases:true,
+        canManageExpenses:true, canManageDeliveries:false, canViewReports:true,
+        canClockIn:true, canViewTasks:false, canSubmitExpenses:true,
       }}));
     } else if (tpl === "employee") {
       setForm(f => ({ ...f, role:"user", jobs:["employee"], permissions: {
         canManageUsers:false, canManageOrders:false, canManageEvents:false, canViewEvents:true,
-        canManagePurchases:false, canManageDeliveries:false, canViewReports:false,
-        canClockIn:true, canViewTasks:true, canSubmitPurchases:true,
+        canManageExpenses:false, canManageDeliveries:false, canViewReports:false,
+        canClockIn:true, canViewTasks:true, canSubmitExpenses:true,
       }}));
     } else if (tpl === "driver") {
       setForm(f => ({ ...f, role:"user", jobs:["driver"], permissions: {
         canManageUsers:false, canManageOrders:false, canManageEvents:false, canViewEvents:true,
-        canManagePurchases:false, canManageDeliveries:true, canViewReports:false,
-        canClockIn:true, canViewTasks:false, canSubmitPurchases:false,
+        canManageExpenses:false, canManageDeliveries:true, canViewReports:false,
+        canClockIn:true, canViewTasks:false, canSubmitExpenses:false,
       }}));
     }
   };
@@ -147,24 +147,9 @@ export function UserModal({ user, onSave, onDelete, onClose, currentUserId, show
             {form.role === "admin" && <p style={{ fontSize:12, color:"#8E8E93", marginTop:6 }}>Les admins ont toutes les permissions automatiquement.</p>}
           </div>
 
-          <div>
-            <label className="lbl">Fonctions (peut en avoir plusieurs)</label>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-              {JOB_OPTIONS.map(j => {
-                const selected = (form.jobs || []).includes(j.id);
-                return (
-                  <button key={j.id} onClick={() => toggleJob(j.id)}
-                    style={{ padding:"8px 14px", borderRadius:20, border:"1.5px solid", borderColor: selected ? "#007AFF" : "#E5E5EA", background: selected ? "#EFF6FF" : "white", cursor:"pointer", fontSize:13, fontWeight:selected?600:400, color: selected ? "#007AFF" : "#3A3A3C", fontFamily:"inherit" }}>
-                    {j.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {form.role !== "admin" && (
             <div>
-              <label className="lbl">Permissions spécifiques</label>
+              <label className="lbl">Permissions</label>
               <div style={{ background:"#F9F9F9", borderRadius:12, padding:"12px 14px", display:"flex", flexDirection:"column", gap:10 }}>
                 {Object.entries(PERMISSION_LABELS).map(([key, label]) => (
                   <label key={key} style={{ display:"flex", alignItems:"center", gap:10, fontSize:14, cursor:"pointer" }}>

@@ -1,7 +1,7 @@
 # 🏷️ Shredhills — Plateforme de gestion
 
 Application web de gestion interne pour Shredhills Impression de vêtements :
-commandes, tâches, événements, livraisons, pointage, achats.
+commandes, tâches, événements, livraisons, pointage, dépenses.
 
 Stack : **React 18** + **Firebase** (Auth Email/Password, Firestore, Storage).
 
@@ -83,7 +83,7 @@ L'app combine trois axes :
 - **`role`** : `admin` (super-utilisateur) ou `user`.
 - **`jobs`** : un ou plusieurs métiers — `admin`, `accountant`, `employee`, `driver`.
   Détermine quelle interface est affichée.
-- **`permissions`** : flags fins (`canManageOrders`, `canManageEvents`, `canViewReports`, `canViewTasks`, `canClockIn`, `canSubmitPurchases`, …).
+- **`permissions`** : flags fins (`canManageOrders`, `canManageEvents`, `canViewReports`, `canViewTasks`, `canClockIn`, `canSubmitExpenses`, …).
   Un `admin` les a toutes implicitement.
 
 Le routage est unifié dans `src/App.jsx` :
@@ -104,8 +104,8 @@ Le routage est unifié dans `src/App.jsx` :
 
 ### 📊 Comptable
 - Feuilles de temps de l'équipe (sessions cumulées par journée)
-- Approuver / refuser les demandes d'achats avec factures jointes
-- Soumettre ses propres achats et pointer
+- Approuver / refuser les demandes de dépenses avec factures jointes
+- Soumettre ses propres dépenses et pointer
 
 ### 👷 Employé
 - Punch in / Punch out
@@ -155,17 +155,17 @@ shredhills/
 │   │   │   ├── OrderModal.jsx
 │   │   │   ├── NewStopModal.jsx
 │   │   │   ├── EditStopModal.jsx
-│   │   │   ├── NewPurchaseModal.jsx
-│   │   │   ├── RefusePurchaseModal.jsx
-│   │   │   └── DeletePurchaseModal.jsx
+│   │   │   ├── NewExpenseModal.jsx
+│   │   │   ├── RefuseExpenseModal.jsx
+│   │   │   └── DeleteExpenseModal.jsx
 │   │   └── sections/
 │   │       ├── DashboardStatStrip.jsx
 │   │       ├── CommandesSection.jsx
 │   │       ├── MaTachesSection.jsx
 │   │       ├── EquipeSection.jsx
 │   │       ├── TourneesSection.jsx
-│   │       ├── PurchasesSubmitView.jsx
-│   │       ├── PurchasesAdminView.jsx
+│   │       ├── ExpensesSubmitView.jsx
+│   │       ├── ExpensesAdminView.jsx
 │   │       ├── FeuillesTempsSection.jsx
 │   │       └── PointageSection.jsx
 │   ├── components/              ← Logo, Nav, PunchSection, SignatureCanvas, Toast

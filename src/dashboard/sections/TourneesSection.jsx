@@ -5,7 +5,7 @@ export function TourneesSection({ drivers, onNewStop }) {
   return (
     <div>
       <PageHeader title="🚐 Tournées"
-        button={{ label: "+ Arrêt", onClick: onNewStop }}
+        button={{ text: "+ Arrêt", onClick: onNewStop }}
       />
       <div className="card" style={{ textAlign:"center", padding:40, color:"#8E8E93" }}>
         <div style={{ fontSize:40, marginBottom:12 }}>🚐</div>

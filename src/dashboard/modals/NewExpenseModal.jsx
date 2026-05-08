@@ -1,11 +1,11 @@
-// src/dashboard/modals/NewPurchaseModal.jsx
+// src/dashboard/modals/NewExpenseModal.jsx
 import { PhotoUpload } from "../../components/PhotoUpload";
 
-export function NewPurchaseModal({
+export function NewExpenseModal({
   open,
   onClose,
-  newPurchase,
-  setNewPurchase,
+  newExpense,
+  setNewExpense,
   categories,
   onSubmit,
   submitting,
@@ -20,16 +20,16 @@ export function NewPurchaseModal({
           <div>
             <label className="lbl">Description *</label>
             <input className="inp" placeholder="Encre sérigraphie noire 5L"
-              value={newPurchase.description}
-              onChange={e => setNewPurchase(n => ({ ...n, description: e.target.value }))}
+              value={newExpense.description}
+              onChange={e => setNewExpense(n => ({ ...n, description: e.target.value }))}
               disabled={submitting}
             />
           </div>
           <div>
             <label className="lbl">Montant ($) *</label>
             <input className="inp" type="number" step="0.01" min="0" inputMode="decimal" placeholder="0.00"
-              value={newPurchase.amount}
-              onChange={e => setNewPurchase(n => ({ ...n, amount: e.target.value }))}
+              value={newExpense.amount}
+              onChange={e => setNewExpense(n => ({ ...n, amount: e.target.value }))}
               disabled={submitting}
             />
           </div>
@@ -38,8 +38,8 @@ export function NewPurchaseModal({
             {categories.length === 0 ? (
               <p style={{ fontSize:12, color:"#FF9500" }}>Aucune catégorie disponible.</p>
             ) : (
-              <select className="sel" value={newPurchase.categoryId}
-                onChange={e => setNewPurchase(n => ({ ...n, categoryId: e.target.value }))}
+              <select className="sel" value={newExpense.categoryId}
+                onChange={e => setNewExpense(n => ({ ...n, categoryId: e.target.value }))}
                 disabled={submitting}
               >
                 <option value="">— Choisir —</option>
@@ -51,15 +51,15 @@ export function NewPurchaseModal({
           </div>
           <div>
             <label className="lbl">Date de la dépense *</label>
-            <input className="inp" type="date" value={newPurchase.purchaseDate}
-              onChange={e => setNewPurchase(n => ({ ...n, purchaseDate: e.target.value }))}
+            <input className="inp" type="date" value={newExpense.purchaseDate}
+              onChange={e => setNewExpense(n => ({ ...n, purchaseDate: e.target.value }))}
               disabled={submitting}
             />
           </div>
           <div>
-            <label className="lbl">Preuve d'achat (facture)</label>
-            <PhotoUpload value={newPurchase.photoFile}
-              onChange={(file) => setNewPurchase(n => ({ ...n, photoFile: file }))}
+            <label className="lbl">Preuve de dépense (facture)</label>
+            <PhotoUpload value={newExpense.photoFile}
+              onChange={(file) => setNewExpense(n => ({ ...n, photoFile: file }))}
               label="📸 Photographier ou joindre la facture"
             />
             <p style={{ fontSize:11, color:"#8E8E93", marginTop:-4 }}>Optionnel mais recommandé pour accélérer l'approbation.</p>

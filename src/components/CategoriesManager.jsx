@@ -77,7 +77,7 @@ export function CategoriesManager({
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title="🏷️ Catégories de demandes d'achat" maxWidth={560}>
+      <Modal open={open} onClose={onClose} title="🏷️ Catégories de dépenses" maxWidth={560}>
         <p style={{ fontSize:13, color:"#8E8E93", marginBottom:14 }}>
           Ajoute, modifie ou supprime les catégories disponibles pour les employés lorsqu'ils soumettent une demande.
         </p>

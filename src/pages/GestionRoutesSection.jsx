@@ -1,7 +1,9 @@
 import { useState, useMemo } from "react";
-import { fmtTime } from "../utils/helpers";
 import { PageHeader } from "../components/PageHeader";
 import { FilterBar } from "../components/FilterBar";
+import { AdminStopRow } from "../components/AdminStopRow";
+import { NewStopModal } from "../dashboard/modals/NewStopModal";
+import { EditStopModal } from "../dashboard/modals/EditStopModal";
 
 export function GestionRoutesSection({ stops, drivers, addStop, updateStop, deleteStop, showToast }) {
   const [newStopModal, setNewStopModal] = useState(false);
@@ -226,122 +228,25 @@ export function GestionRoutesSection({ stops, drivers, addStop, updateStop, dele
         );
       })}
 
-      {/* Add stop modal */}
       {newStopModal && (
-        <div className="overlay" onClick={e => e.target === e.currentTarget && setNewStopModal(false)}>
-          <div className="sheet">
-            <div className="handle" />
-            <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20 }}>📍 Ajouter un arrêt</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div>
-                <label className="lbl">Type</label>
-                <div style={{ display: "flex", gap: 10 }}>
-                  {[["delivery", "📦 Livraison"], ["pickup", "📤 Ramassage"]].map(([v, l]) => (
-                    <button key={v} onClick={() => setNewStop(n => ({ ...n, type: v }))} className="btn"
-                      style={{ flex: 1, justifyContent: "center", background: newStop.type === v ? "#111" : "white", color: newStop.type === v ? "white" : "#3A3A3C", border: "1.5px solid", borderColor: newStop.type === v ? "#111" : "#E5E5EA" }}>{l}</button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="lbl">Livreur</label>
-                <select className="sel" value={newStop.assignedTo} onChange={e => setNewStop(n => ({ ...n, assignedTo: e.target.value }))}>
-                  <option value="">— Choisir —</option>
-                  {drivers.map(d => <option key={d.id} value={d.id}>{d.displayName}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="lbl">Date</label>
-                <input
-                  type="date"
-                  className="inp"
-                  value={newStop.scheduledDate ? new Date(newStop.scheduledDate).toISOString().split("T")[0] : ""}
-                  onChange={e => setNewStop(n => ({ ...n, scheduledDate: e.target.value ? new Date(e.target.value + "T12:00:00") : null }))}
-                />
-              </div>
-              <div><label className="lbl">Client</label><input className="inp" placeholder="Sophie Tremblay" value={newStop.clientName} onChange={e => setNewStop(n => ({ ...n, clientName: e.target.value }))} /></div>
-              <div><label className="lbl">Téléphone</label><input className="inp" type="tel" placeholder="514-555-0101" value={newStop.clientPhone} onChange={e => setNewStop(n => ({ ...n, clientPhone: e.target.value }))} /></div>
-              <div><label className="lbl">Adresse</label><input className="inp" placeholder="1234 rue Ste-Catherine" value={newStop.address} onChange={e => setNewStop(n => ({ ...n, address: e.target.value }))} /></div>
-              <div><label className="lbl">Instructions</label><input className="inp" placeholder="Sonner 2 fois…" value={newStop.instructions} onChange={e => setNewStop(n => ({ ...n, instructions: e.target.value }))} /></div>
-              <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-                <button className="btn btn-outline" style={{ flex: 1, justifyContent: "center" }} onClick={() => setNewStopModal(false)}>Annuler</button>
-                <button className="btn btn-purple" style={{ flex: 2, justifyContent: "center" }} onClick={handleAddStop}>Ajouter</button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <NewStopModal
+          newStop={newStop}
+          setNewStop={setNewStop}
+          drivers={drivers}
+          onAdd={handleAddStop}
+          onClose={() => setNewStopModal(false)}
+        />
       )}
 
-      {/* Edit stop modal */}
       {editStopModal && (
-        <div className="overlay" onClick={e => e.target === e.currentTarget && setEditStopModal(null)}>
-          <div className="sheet">
-            <div className="handle" />
-            <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20 }}>✏️ Modifier l'arrêt</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div>
-                <label className="lbl">Type</label>
-                <div style={{ display: "flex", gap: 10 }}>
-                  {[["delivery", "📦 Livraison"], ["pickup", "📤 Ramassage"]].map(([v, l]) => (
-                    <button key={v} onClick={() => setEditStopModal(n => ({ ...n, type: v }))} className="btn"
-                      style={{ flex: 1, justifyContent: "center", background: editStopModal.type === v ? "#111" : "white", color: editStopModal.type === v ? "white" : "#3A3A3C", border: "1.5px solid", borderColor: editStopModal.type === v ? "#111" : "#E5E5EA" }}>{l}</button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="lbl">Livreur</label>
-                <select className="sel" value={editStopModal.assignedTo} onChange={e => setEditStopModal(n => ({ ...n, assignedTo: e.target.value }))}>
-                  {drivers.map(d => <option key={d.id} value={d.id}>{d.displayName}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="lbl">Date</label>
-                <input
-                  type="date"
-                  className="inp"
-                  value={editStopModal.scheduledDate ? (editStopModal.scheduledDate.toDate ? editStopModal.scheduledDate.toDate().toISOString().split("T")[0] : new Date(editStopModal.scheduledDate).toISOString().split("T")[0]) : ""}
-                  onChange={e => setEditStopModal(n => ({ ...n, scheduledDate: e.target.value ? new Date(e.target.value + "T12:00:00") : null }))}
-                />
-              </div>
-              <div><label className="lbl">Client</label><input className="inp" value={editStopModal.clientName} onChange={e => setEditStopModal(n => ({ ...n, clientName: e.target.value }))} /></div>
-              <div><label className="lbl">Téléphone</label><input className="inp" type="tel" value={editStopModal.clientPhone || ""} onChange={e => setEditStopModal(n => ({ ...n, clientPhone: e.target.value }))} /></div>
-              <div><label className="lbl">Adresse</label><input className="inp" value={editStopModal.address} onChange={e => setEditStopModal(n => ({ ...n, address: e.target.value }))} /></div>
-              <div><label className="lbl">Instructions</label><input className="inp" value={editStopModal.instructions || ""} onChange={e => setEditStopModal(n => ({ ...n, instructions: e.target.value }))} /></div>
-              <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-                <button className="btn btn-outline" style={{ flex: 1, justifyContent: "center" }} onClick={() => setEditStopModal(null)}>Annuler</button>
-                <button className="btn btn-purple" style={{ flex: 2, justifyContent: "center" }} onClick={handleEditStop}>Enregistrer</button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <EditStopModal
+          editStopModal={editStopModal}
+          setEditStopModal={setEditStopModal}
+          drivers={drivers}
+          onSave={handleEditStop}
+          onClose={() => setEditStopModal(null)}
+        />
       )}
-    </div>
-  );
-}
-
-function AdminStopRow({ stop, index, total, dateKey, onMove, onEdit, onDelete }) {
-  return (
-    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 0", borderBottom: "1px solid #F2F2F7" }}>
-      {dateKey && onMove && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <button onClick={() => onMove(stop.id, "up", dateKey)} disabled={index === 0} style={{ background: "none", border: "none", cursor: "pointer", padding: 2, opacity: index === 0 ? 0.3 : 1, fontSize: 10 }}>▲</button>
-          <button onClick={() => onMove(stop.id, "down", dateKey)} disabled={index === total - 1} style={{ background: "none", border: "none", cursor: "pointer", padding: 2, opacity: index === total - 1 ? 0.3 : 1, fontSize: 10 }}>▼</button>
-        </div>
-      )}
-      <div style={{ width: 26, height: 26, borderRadius: "50%", background: stop.status === "completed" ? "#34C759" : stop.status === "doing" ? "#FF9500" : "#E5E5EA", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0, color: stop.status === "completed" || stop.status === "doing" ? "white" : "#8E8E93", fontWeight: 700 }}>
-        {stop.status === "completed" ? "✓" : stop.order || index + 1}
-      </div>
-      <div style={{ flex: 1 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-          <span>{stop.type === "delivery" ? "📦" : "📤"}</span>
-          <span style={{ fontWeight: 600, fontSize: 14, color: stop.status === "completed" ? "#8E8E93" : "#1C1C1E", textDecoration: stop.status === "completed" ? "line-through" : "none" }}>{stop.clientName}</span>
-          {stop.status === "completed" && <span style={{ fontSize: 11, color: "#34C759", fontWeight: 600 }}>✓ {fmtTime(stop.completedAt)}</span>}
-          {stop.status === "doing" && <span style={{ fontSize: 10, color: "#FF9500", fontWeight: 600, background: "#FFF3E0", padding: "2px 6px", borderRadius: 6 }}>En cours</span>}
-        </div>
-        <p style={{ fontSize: 12, color: "#6D6D72" }}>📍 {stop.address}</p>
-        {stop.note && <p style={{ fontSize: 11, color: "#8E8E93", marginTop: 4 }}>📝 {stop.note}</p>}
-      </div>
-      <button className="btn-soft" style={{ fontSize: 12, padding: "4px 8px" }} onClick={onEdit}>✏️</button>
-      <button className="btn-soft-red" onClick={() => onDelete(stop.id)}>✕</button>
     </div>
   );
 }

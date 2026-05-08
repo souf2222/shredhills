@@ -8,9 +8,10 @@
  *  - filteredCount  number             Shown as subtitle when different from total.
  *  - button         { text, onClick, icon?, className?, disabled?, title? } | null
  *  - search         { value, onChange, placeholder? } | null
+ *  - filters        ReactNode[]        FilterBar(s) rendered below the subtitle.
  *  - children       ReactNode          Extra elements rendered between search & button.
  */
-export function PageHeader({ title, total, filteredCount, button, search, children }) {
+export function PageHeader({ title, total, filteredCount, button, search, filters, children }) {
   const isFiltered = typeof filteredCount === "number" && typeof total === "number" && filteredCount !== total;
   const subtitle = isFiltered
     ? `${filteredCount} résultat${filteredCount > 1 ? "s" : ""} sur ${total}`
@@ -66,6 +67,7 @@ export function PageHeader({ title, total, filteredCount, button, search, childr
           {subtitle}
         </p>
       )}
+      {filters}
     </div>
   );
 }

@@ -1,8 +1,15 @@
-// src/dashboard/sections/PurchasesAdminView.jsx
-import { useMemo } from "react";
+// src/dashboard/sections/ExpensesAdminView.jsx
+import { useMemo, useState } from "react";
 import { fmtDate } from "../../utils/helpers";
+import { PageHeader } from "../../components/PageHeader";
+import { FilterBar } from "../../components/FilterBar";
 
-export function PurchasesAdminView({ purchases, users, categories, filter, setFilter, onApprove, onRefuseStart, onDelete, onPhotoClick, onManageCategories }) {
+export function ExpensesAdminView({ purchases, users, categories, onApprove, onRefuseStart, onDelete, onPhotoClick, onManageCategories }) {
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [empFilter, setEmpFilter] = useState("all");
+  const [searchText, setSearchText] = useState("");
+
   const empOptions = useMemo(() => {
     const seen = new Map();
     for (const p of purchases) {
@@ -13,58 +20,69 @@ export function PurchasesAdminView({ purchases, users, categories, filter, setFi
     return Array.from(seen, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
   }, [purchases, users]);
 
+  const norm = searchText.trim().toLowerCase();
   const filtered = purchases.filter(p => {
-    if (filter.status !== "all" && p.status !== filter.status) return false;
-    if (filter.categoryId !== "all" && p.categoryId !== filter.categoryId) return false;
-    if (filter.empId !== "all" && p.empId !== filter.empId) return false;
-    return true;
+    if (statusFilter !== "all" && p.status !== statusFilter) return false;
+    if (categoryFilter !== "all" && p.categoryId !== categoryFilter) return false;
+    if (empFilter !== "all" && p.empId !== empFilter) return false;
+    if (!norm) return true;
+    return [p.description, p.empName, p.categoryLabel].join(" ").toLowerCase().includes(norm);
   });
 
   const pendingCount  = purchases.filter(p => p.status === "pending").length;
   const approvedTotal = filtered.filter(p => p.status === "approved").reduce((a, p) => a + (Number(p.amount) || 0), 0);
   const refusedCount  = filtered.filter(p => p.status === "refused").length;
 
-  const STATUS_FILTERS = [
-    { v:"pending",  label:`⏳ En attente${pendingCount?` (${pendingCount})`:""}`, color:"#FF9500" },
-    { v:"approved", label:"✅ Approuvées", color:"#34C759" },
-    { v:"refused",  label:"❌ Refusées",   color:"#FF3B30" },
-    { v:"all",      label:"Toutes",        color:"#6D6D72" },
-  ];
-
   return (
     <div>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:10, marginBottom:14, flexWrap:"wrap" }}>
-        <p style={{ fontSize:14, color:"#8E8E93" }}>Approuve ou refuse les demandes de remboursement de l'équipe.</p>
-        <button className="btn btn-outline" style={{ padding:"8px 14px", fontSize:13 }} onClick={onManageCategories}>🏷️ Gérer les catégories</button>
-      </div>
-
-      <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
-        {STATUS_FILTERS.map(s => {
-          const active = filter.status === s.v;
-          return (
-            <button key={s.v} type="button" onClick={() => setFilter(f => ({ ...f, status: s.v }))}
-              style={{ padding:"7px 14px", borderRadius:20, border:"1.5px solid", borderColor: active ? s.color : "#E5E5EA", background: active ? `${s.color}18` : "white", color: active ? s.color : "#3A3A3C", fontWeight: active ? 700 : 500, cursor:"pointer", fontFamily:"inherit", fontSize:13 }}>
-              {s.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:16 }}>
-        <select value={filter.categoryId} onChange={e => setFilter(f => ({ ...f, categoryId: e.target.value }))}
-          style={{ background:"white", border:"1px solid #E5E5EA", borderRadius:10, padding:"8px 12px", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
-          <option value="all">🏷️ Toutes les catégories</option>
-          {categories.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
-        </select>
-        <select value={filter.empId} onChange={e => setFilter(f => ({ ...f, empId: e.target.value }))}
-          style={{ background:"white", border:"1px solid #E5E5EA", borderRadius:10, padding:"8px 12px", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
-          <option value="all">👥 Tous les employés</option>
-          {empOptions.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-        </select>
-        {(filter.status !== "all" || filter.categoryId !== "all" || filter.empId !== "all") && (
-          <button className="btn btn-outline" style={{ padding:"8px 12px", fontSize:12 }} onClick={() => setFilter({ status:"all", categoryId:"all", empId:"all" })}>✕ Réinitialiser</button>
-        )}
-      </div>
+      <PageHeader
+        title="📋 Gestion des dépenses"
+        total={purchases.length}
+        filteredCount={filtered.length}
+        search={{ value: searchText, onChange: setSearchText, placeholder: "Rechercher…" }}
+        button={{ text: "🏷️ Gérer les catégories", onClick: onManageCategories, className: "btn btn-outline" }}
+        filters={[
+          <FilterBar
+            key="fb-ea"
+            hasFilters={statusFilter !== "all" || categoryFilter !== "all" || empFilter !== "all" || searchText.trim()}
+            onReset={() => { setStatusFilter("all"); setCategoryFilter("all"); setEmpFilter("all"); setSearchText(""); }}
+            filters={[
+              {
+                key: "status",
+                type: "toggle-group",
+                value: statusFilter,
+                onChange: setStatusFilter,
+                options: [
+                  { value: "all", label: `Toutes (${purchases.length})`, color: "#6D6D72" },
+                  { value: "pending", label: `⏳ En attente (${pendingCount})`, color: "#FF9500" },
+                  { value: "approved", label: "✅ Approuvées", color: "#34C759" },
+                  { value: "refused", label: "❌ Refusées", color: "#FF3B30" },
+                ],
+              },
+              {
+                key: "category",
+                type: "select",
+                value: categoryFilter,
+                onChange: setCategoryFilter,
+                options: [
+                  { value: "all", label: "🏷️ Toutes les catégories" },
+                  ...categories.map(c => ({ value: c.id, label: `${c.emoji} ${c.label}` })),
+                ],
+              },
+              {
+                key: "employee",
+                type: "select",
+                value: empFilter,
+                onChange: setEmpFilter,
+                options: [
+                  { value: "all", label: "👥 Tous les employés" },
+                  ...empOptions.map(e => ({ value: e.id, label: e.name })),
+                ],
+              },
+            ]}
+          />,
+        ]}
+      />
 
       <div style={{ display:"flex", gap:10, marginBottom:16, flexWrap:"wrap" }}>
         <div className="card" style={{ flex:1, minWidth:150, padding:"10px 14px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -118,7 +136,7 @@ export function PurchasesAdminView({ purchases, users, categories, filter, setFi
               {p.photoUrl ? (
                 <button type="button" onClick={() => onPhotoClick?.(p.photoUrl)}
                   style={{ flex:"0 0 auto", border:"none", padding:0, cursor:"pointer", borderRadius:10, overflow:"hidden", background:"#F2F2F7" }} title="Voir la facture en grand">
-                  <img src={p.photoUrl} alt="Facture" style={{ width:96, height:96, objectFit:"cover", display:"block" }}/>
+                  <img src={p.photoUrl} alt="Facture" style={{ width:96, height:96, objectFit:"cover", display:"block"}}/>
                 </button>
               ) : (
                 <div style={{ flex:"0 0 auto", width:96, height:96, borderRadius:10, background:"#F9F9FB", border:"1px dashed #E5E5EA", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", color:"#C7C7CC", fontSize:11, gap:4 }}>

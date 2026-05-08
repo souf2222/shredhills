@@ -124,10 +124,10 @@ export const sendPasswordReset = (email) => sendPasswordResetEmail(auth, email);
  * Upload a purchase receipt photo to Storage under purchases/{purchaseId}/.
  * Returns { url, path } so the caller can store both on the Firestore doc.
  */
-export const uploadPurchasePhoto = async (file, purchaseId) => {
-  if (!file || !purchaseId) throw new Error("Fichier ou ID manquant.");
+export const uploadExpensePhoto = async (file, expenseId) => {
+  if (!file || !expenseId) throw new Error("Fichier ou ID manquant.");
   const ext = (file.name?.split(".").pop() || "jpg").toLowerCase();
-  const path = `purchases/${purchaseId}/${Date.now()}.${ext}`;
+  const path = `purchases/${expenseId}/${Date.now()}.${ext}`;
   const sref = ref(storage, path);
   await uploadBytes(sref, file, { contentType: file.type || "image/jpeg" });
   const url = await getDownloadURL(sref);

@@ -4,7 +4,27 @@ import {
   collection, doc, onSnapshot, setDoc, updateDoc,
   deleteDoc, addDoc, serverTimestamp, query, orderBy
 } from "firebase/firestore";
-import { db, uploadPurchasePhoto, deleteStorageFile } from "../firebase";
+import { db, uploadExpensePhoto, deleteStorageFile } from "../firebase";
+
+// Firestore Timestamps can come back as objects (with .toMillis() or .seconds).
+// We normalize them to plain numbers so every consumer can do arithmetic safely.
+function toMs(val) {
+  if (typeof val === "number") return val;
+  if (val && typeof val.toMillis === "function") return val.toMillis();
+  if (val && typeof val.seconds === "number") return val.seconds * 1000;
+  if (val instanceof Date) return val.getTime();
+  return val;
+}
+
+function normalizeEvent(doc) {
+  const d = doc.data();
+  return {
+    ...d,
+    id: doc.id,
+    startDate: toMs(d.startDate),
+    endDate:   toMs(d.endDate),
+  };
+}
 
 export function useFirestore() {
   const [users,       setUsers]       = useState([]);
@@ -45,7 +65,7 @@ export function useFirestore() {
       }, () => done()),
 
       onSnapshot(query(collection(db, "events"), orderBy("startDate", "asc")), snap => {
-        setEvents(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
+        setEvents(snap.docs.map(normalizeEvent)); done();
       }, () => done()),
 
       onSnapshot(collection(db, "purchaseCategories"), snap => {
@@ -95,20 +115,19 @@ export function useFirestore() {
     });
   };
 
-  // PURCHASES
-  // Creates a purchase doc, then uploads the receipt photo if provided
-  // and patches the doc with { photoUrl, photoPath }. Returns the purchase id.
-  const addPurchase = async (p, photoFile = null) => {
+  // EXPENSES (formerly PURCHASES)
+  // Creates an expense doc, then uploads the receipt photo if provided
+  // and patches the doc with { photoUrl, photoPath }. Returns the expense id.
+  const addExpense = async (p, photoFile = null) => {
     const ref = await addDoc(collection(db, "purchases"), {
       ...p,
       submittedAt: serverTimestamp(),
     });
     if (photoFile) {
       try {
-        const { url, path } = await uploadPurchasePhoto(photoFile, ref.id);
+        const { url, path } = await uploadExpensePhoto(photoFile, ref.id);
         await updateDoc(ref, { photoUrl: url, photoPath: path });
       } catch (err) {
-        // Purchase still saved, but without photo. Surface the error to caller.
         console.error("Upload facture échoué :", err);
         throw err;
       }
@@ -116,9 +135,9 @@ export function useFirestore() {
     return ref.id;
   };
 
-  const updatePurchase = (id, data) => updateDoc(doc(db, "purchases", id), data);
+  const updateExpense = (id, data) => updateDoc(doc(db, "purchases", id), data);
 
-  const approvePurchase = (id, decidedBy, decidedByName) =>
+  const approveExpense = (id, decidedBy, decidedByName) =>
     updateDoc(doc(db, "purchases", id), {
       status: "approved",
       approvedAt: Date.now(),
@@ -126,7 +145,7 @@ export function useFirestore() {
       decidedByName: decidedByName || null,
     });
 
-  const refusePurchase = (id, reason, decidedBy, decidedByName) =>
+  const refuseExpense = (id, reason, decidedBy, decidedByName) =>
     updateDoc(doc(db, "purchases", id), {
       status: "refused",
       refusedAt: Date.now(),
@@ -135,12 +154,12 @@ export function useFirestore() {
       decidedByName: decidedByName || null,
     });
 
-  const deletePurchase = async (id, photoPath = null) => {
+  const deleteExpense = async (id, photoPath = null) => {
     await deleteStorageFile(photoPath);
     await deleteDoc(doc(db, "purchases", id));
   };
 
-  // PURCHASE CATEGORIES (editable CRUD)
+  // EXPENSE CATEGORIES (editable CRUD)
   const addCategory = (cat) => addDoc(collection(db, "purchaseCategories"), {
     label: cat.label || "",
     emoji: cat.emoji || "📎",
@@ -164,7 +183,7 @@ export function useFirestore() {
     addOrder, updateOrder, deleteOrder,
     addStop, updateStop, deleteStop,
     getPunchSessions, addPunchSession, updatePunchSession, closePunchSession,
-    addPurchase, updatePurchase, approvePurchase, refusePurchase, deletePurchase,
+    addExpense, updateExpense, approveExpense, refuseExpense, deleteExpense,
     addCategory, updateCategory, deleteCategory,
     addEvent, updateEvent, deleteEvent,
   };

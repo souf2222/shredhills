@@ -2,7 +2,7 @@
 import { PageHeader } from "../../components/PageHeader";
 import { FilterBar } from "../../components/FilterBar";
 
-export function EquipeSection({ users, userProfile, equipeSearch, setEquipeSearch, equipeRole, setEquipeRole, onUserClick }) {
+export function EquipeSection({ users, userProfile, equipeSearch, setEquipeSearch, equipeRole, setEquipeRole, onUserClick, onNewUser }) {
   const equipeFiltered = users.filter(u => {
     const okRole = equipeRole === "all" ? true : equipeRole === "admin" ? u.role === "admin" : (u.jobs || []).includes(equipeRole);
     return okRole && [u.displayName, u.email].join(" ").toLowerCase().includes(equipeSearch.trim().toLowerCase());
@@ -15,7 +15,7 @@ export function EquipeSection({ users, userProfile, equipeSearch, setEquipeSearc
         total={users.length}
         filteredCount={equipeFiltered.length}
         search={{ value: equipeSearch, onChange: setEquipeSearch, placeholder: "Rechercher..." }}
-        button={{ label: "+ Utilisateur", onClick: () => {} }}
+        button={{ text: "+ Utilisateur", onClick: onNewUser }}
         filters={[
           <FilterBar key="fb-e" hasFilters={equipeRole !== "all" || equipeSearch.trim()} onReset={() => { setEquipeRole("all"); setEquipeSearch(""); }} filters={[
             { key: "role", type: "select", value: equipeRole, onChange: setEquipeRole, options: [
@@ -51,9 +51,6 @@ export function EquipeSection({ users, userProfile, equipeSearch, setEquipeSearc
                   <div style={{ fontSize:12, color:"#8E8E93" }}>{u.email}</div>
                   <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:4, flexWrap:"wrap" }}>
                     {u.role === "admin" && <span className="badge bv">⚙️ Admin</span>}
-                    {(u.jobs || []).map(j => (
-                      <span key={j} className="badge bp" style={{ textTransform:"capitalize" }}>{j === "employee" ? "Employé" : j === "driver" ? "Livreur" : j === "accountant" ? "Comptable" : j}</span>
-                    ))}
                   </div>
                 </div>
               </div>

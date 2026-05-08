@@ -36,6 +36,11 @@ export const fmtEventTime = (ts) =>
 
 export const daysUntil = (ts) => Math.ceil((ts - Date.now()) / DAY);
 
+export const isEventPast = (e) => {
+  if (!e || !e.endDate) return false;
+  return e.allDay ? e.endDate + DAY - 1 < Date.now() : e.endDate < Date.now();
+};
+
 export const getDL = (deadline) => {
   const diff = deadline - Date.now();
   if (diff <= 0) return { label:"En retard", color:"#FF3B30", urgent:true, overdue:true, days:0, hours:0 };

@@ -18,8 +18,8 @@ import { CommandesSection } from "../dashboard/sections/CommandesSection";
 import { MaTachesSection } from "../dashboard/sections/MaTachesSection";
 import { EquipeSection } from "../dashboard/sections/EquipeSection";
 import { TourneesSection } from "../dashboard/sections/TourneesSection";
-import { PurchasesSubmitView } from "../dashboard/sections/PurchasesSubmitView";
-import { PurchasesAdminView } from "../dashboard/sections/PurchasesAdminView";
+import { ExpensesSubmitView } from "../dashboard/sections/ExpensesSubmitView";
+import { ExpensesAdminView } from "../dashboard/sections/ExpensesAdminView";
 import { FeuillesTempsSection } from "../dashboard/sections/FeuillesTempsSection";
 import { PointageSection } from "../dashboard/sections/PointageSection";
 
@@ -27,9 +27,9 @@ import { UserModal } from "../dashboard/modals/UserModal";
 import { OrderModal } from "../dashboard/modals/OrderModal";
 import { NewStopModal } from "../dashboard/modals/NewStopModal";
 import { EditStopModal } from "../dashboard/modals/EditStopModal";
-import { NewPurchaseModal } from "../dashboard/modals/NewPurchaseModal";
-import { RefusePurchaseModal } from "../dashboard/modals/RefusePurchaseModal";
-import { DeletePurchaseModal } from "../dashboard/modals/DeletePurchaseModal";
+import { NewExpenseModal } from "../dashboard/modals/NewExpenseModal";
+import { RefuseExpenseModal } from "../dashboard/modals/RefuseExpenseModal";
+import { DeleteExpenseModal } from "../dashboard/modals/DeleteExpenseModal";
 
 import { DAY } from "../dashboard/constants";
 
@@ -45,7 +45,7 @@ export function DashboardPage({ db: fsData }) {
     updateUser, deleteUser,
     addOrder, updateOrder, deleteOrder,
     addStop, updateStop, deleteStop,
-    addPurchase, updatePurchase, approvePurchase: fsApprovePurchase, refusePurchase: fsRefusePurchase, deletePurchase,
+    addExpense, updateExpense, approveExpense: fsApproveExpense, refuseExpense: fsRefuseExpense, deleteExpense,
     addCategory, updateCategory, deleteCategory,
     addEvent, updateEvent, deleteEvent,
     addPunchSession, closePunchSession, updatePunchSession,
@@ -67,19 +67,18 @@ export function DashboardPage({ db: fsData }) {
   const [commandesSearch, setCommandesSearch] = useState("");
   const [equipeSearch, setEquipeSearch] = useState("");
   const [equipeRole, setEquipeRole] = useState("all");
-  const [purchaseFilter, setPurchaseFilter] = useState({ status: "all", categoryId: "all", empId: "all" });
   const [dateRange, setDateRange] = useState("week");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
 
-  // Purchase modals
+  // Expense modals
   const [refuseModal, setRefuseModal] = useState(null);
   const [refuseReason, setRefuseReason] = useState("");
   const [refusing, setRefusing] = useState(false);
-  const [deletePurchaseModal, setDeletePurchaseModal] = useState(null);
-  const [newPurchaseModal, setNewPurchaseModal] = useState(false);
-  const [newPurchase, setNewPurchase] = useState({ description: "", amount: "", categoryId: "", photoFile: null, purchaseDate: todayStr() });
-  const [submittingPurchase, setSubmittingPurchase] = useState(false);
+  const [deleteExpenseModal, setDeleteExpenseModal] = useState(null);
+  const [newExpenseModal, setNewExpenseModal] = useState(false);
+  const [newExpense, setNewExpense] = useState({ description: "", amount: "", categoryId: "", photoFile: null, purchaseDate: todayStr() });
+  const [submittingExpense, setSubmittingExpense] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const [categoriesModal, setCategoriesModal] = useState(false);
 
@@ -90,7 +89,7 @@ export function DashboardPage({ db: fsData }) {
   const drivers   = users.filter(u => u.jobs?.includes("driver"));
   const myOrders  = orders.filter(o => o.assignedTo === userProfile.id);
   const adminActive = orders.filter(o => o.status !== "done");
-  const pendingPurchases = purchases.filter(p => p.status === "pending").length;
+  const pendingExpenses = purchases.filter(p => p.status === "pending").length;
 
   // --- Tab builder based on permissions ---
   const tabs = [];
@@ -115,11 +114,11 @@ export function DashboardPage({ db: fsData }) {
   if (can("canManageUsers")) {
     pushTab("equipe", "👥 Équipe");
   }
-  if (can("canSubmitPurchases")) {
-    pushTab("mes-achats", "🧾 Mes achats");
+  if (can("canSubmitExpenses")) {
+    pushTab("mes-depenses", "🧾 Mes dépenses");
   }
-  if (can("canManagePurchases")) {
-    pushTab("achats", `📋 Gestion des achats${pendingPurchases > 0 ? ` (${pendingPurchases})` : ""}`);
+  if (can("canManageExpenses")) {
+    pushTab("depenses", `📋 Gestion des dépenses${pendingExpenses > 0 ? ` (${pendingExpenses})` : ""}`);
   }
   if (can("canViewReports")) {
     pushTab("feuilles-de-temps", "⏱️ Feuilles de temps");
@@ -225,44 +224,44 @@ export function DashboardPage({ db: fsData }) {
     await updateStop(swapped.id, { order: orderA });
   };
 
-  // Purchases
-  const approvePurchase = async (id) => {
-    try { await fsApprovePurchase(id, userProfile?.id || null, userProfile?.displayName || null); showToast("Approuvé"); }
+  // Expenses
+  const approveExpense = async (id) => {
+    try { await fsApproveExpense(id, userProfile?.id || null, userProfile?.displayName || null); showToast("Approuvé"); }
     catch (e) { showToast("Erreur : " + e.message); }
   };
-  const refusePurchase = async () => {
+  const refuseExpense = async () => {
     if (!refuseReason.trim() || refusing) return;
     setRefusing(true);
     try {
-      await fsRefusePurchase(refuseModal.id, refuseReason.trim(), userProfile?.id || null, userProfile?.displayName || null);
+      await fsRefuseExpense(refuseModal.id, refuseReason.trim(), userProfile?.id || null, userProfile?.displayName || null);
       setRefuseModal(null); setRefuseReason(""); showToast("Refusé");
     } catch (e) { showToast("Erreur : " + e.message); }
     finally { setRefusing(false); }
   };
-  const handleDeletePurchase = async (p) => {
-    try { await deletePurchase(p.id, p.photoPath); setDeletePurchaseModal(null); showToast("Demande supprimée"); }
+  const handleDeleteExpense = async (p) => {
+    try { await deleteExpense(p.id, p.photoPath); setDeleteExpenseModal(null); showToast("Demande supprimée"); }
     catch (e) { showToast("Erreur : " + e.message); }
   };
-  const submitPurchase = async () => {
-    if (!newPurchase.description.trim() || !newPurchase.amount) { showToast("Description et montant requis"); return; }
-    if (!newPurchase.categoryId) { showToast("Choisis une catégorie"); return; }
-    if (!newPurchase.purchaseDate) { showToast("Choisis une date"); return; }
-    const cat = categories.find(c => c.id === newPurchase.categoryId);
-    const [yy, mm, dd] = newPurchase.purchaseDate.split("-").map(Number);
+  const submitExpense = async () => {
+    if (!newExpense.description.trim() || !newExpense.amount) { showToast("Description et montant requis"); return; }
+    if (!newExpense.categoryId) { showToast("Choisis une catégorie"); return; }
+    if (!newExpense.purchaseDate) { showToast("Choisis une date"); return; }
+    const cat = categories.find(c => c.id === newExpense.categoryId);
+    const [yy, mm, dd] = newExpense.purchaseDate.split("-").map(Number);
     const purchaseDateMs = new Date(yy, (mm || 1) - 1, dd || 1, 12, 0, 0, 0).getTime();
-    setSubmittingPurchase(true);
+    setSubmittingExpense(true);
     try {
-      await addPurchase({
+      await addExpense({
         empId: userProfile.id, empName: userProfile.displayName,
-        description: newPurchase.description.trim(), amount: parseFloat(newPurchase.amount) || 0,
-        categoryId: newPurchase.categoryId, categoryLabel: cat?.label || "", categoryEmoji: cat?.emoji || "", categoryColor: cat?.color || "#8E8E93",
+        description: newExpense.description.trim(), amount: parseFloat(newExpense.amount) || 0,
+        categoryId: newExpense.categoryId, categoryLabel: cat?.label || "", categoryEmoji: cat?.emoji || "", categoryColor: cat?.color || "#8E8E93",
         status: "pending", photoUrl: null, photoPath: null, approvedAt: null, refusedAt: null,
         refusedReason: "", decidedBy: null, decidedByName: null, purchaseDate: purchaseDateMs,
-      }, newPurchase.photoFile);
-      setNewPurchase({ description: "", amount: "", categoryId: "", photoFile: null, purchaseDate: todayStr() });
-      setNewPurchaseModal(false); showToast("Demande envoyée !");
+      }, newExpense.photoFile);
+      setNewExpense({ description: "", amount: "", categoryId: "", photoFile: null, purchaseDate: todayStr() });
+      setNewExpenseModal(false); showToast("Demande envoyée !");
     } catch (err) { console.error(err); showToast("Erreur d'envoi. Réessaie."); }
-    finally { setSubmittingPurchase(false); }
+    finally { setSubmittingExpense(false); }
   };
 
   // Task actions for MaTachesSection
@@ -285,9 +284,9 @@ export function DashboardPage({ db: fsData }) {
         active={tab}
         onNavigate={setTab}
         subtitle=""
-        badge={pendingPurchases > 0 && can("canManagePurchases") && (
+        badge={pendingExpenses > 0 && can("canManageExpenses") && (
           <div style={{ background:"#FF3B30", color:"white", borderRadius:20, padding:"4px 12px", fontSize:12, fontWeight:700 }}>
-            {pendingPurchases} demande{pendingPurchases>1?"s":""} en attente
+            {pendingExpenses} demande{pendingExpenses>1?"s":""} en attente
           </div>
         )}
       />
@@ -296,17 +295,6 @@ export function DashboardPage({ db: fsData }) {
         {/* Stat strip */}
         <DashboardStatStrip events={events} orders={orders} stops={stops} users={users} punches={punches} userProfile={userProfile} />
 
-        {/* ── Header rows with buttons ── */}
-        {tab === "commandes" && can("canManageOrders") && (
-          <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:16 }}>
-            <button className="btn btn-primary" onClick={() => setOrderModal("new")}>+ Commande</button>
-          </div>
-        )}
-        {tab === "equipe" && can("canManageUsers") && (
-          <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:16 }}>
-            <button className="btn btn-primary" onClick={() => setUserModal("new")}>+ Utilisateur</button>
-          </div>
-        )}
         {/* ── CONTENT ── */}
         {tab === "evenements" && (
           <EventsPage events={events} users={users} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent} showToast={showToast}/>
@@ -319,6 +307,7 @@ export function DashboardPage({ db: fsData }) {
             commandesStatus={commandesStatus} setCommandesStatus={setCommandesStatus}
             onOrderClick={(o) => setOrderModal(o)}
             onReassign={reassignOrder}
+            onNewOrder={() => setOrderModal("new")}
           />
         )}
 
@@ -339,25 +328,25 @@ export function DashboardPage({ db: fsData }) {
             equipeSearch={equipeSearch} setEquipeSearch={setEquipeSearch}
             equipeRole={equipeRole} setEquipeRole={setEquipeRole}
             onUserClick={(u) => setUserModal(u)}
+            onNewUser={() => setUserModal("new")}
           />
         )}
 
-        {tab === "mes-achats" && can("canSubmitPurchases") && (
-          <PurchasesSubmitView
+        {tab === "mes-depenses" && can("canSubmitExpenses") && (
+          <ExpensesSubmitView
             purchases={purchases.filter(p => p.empId === userProfile.id)}
             categories={categories}
-            onNewPurchase={() => { setNewPurchase({ description: "", amount: "", categoryId: "", photoFile: null, purchaseDate: todayStr() }); setNewPurchaseModal(true); }}
+            onNewExpense={() => { setNewExpense({ description: "", amount: "", categoryId: "", photoFile: null, purchaseDate: todayStr() }); setNewExpenseModal(true); }}
             onPhotoClick={(url) => setLightboxUrl(url)}
           />
         )}
 
-        {tab === "achats" && can("canManagePurchases") && (
-          <PurchasesAdminView
+        {tab === "depenses" && can("canManageExpenses") && (
+          <ExpensesAdminView
             purchases={purchases} users={users} categories={categories}
-            filter={purchaseFilter} setFilter={setPurchaseFilter}
-            onApprove={approvePurchase}
+            onApprove={approveExpense}
             onRefuseStart={(p) => { setRefuseModal(p); setRefuseReason(""); }}
-            onDelete={(p) => setDeletePurchaseModal(p)}
+            onDelete={(p) => setDeleteExpenseModal(p)}
             onPhotoClick={(url) => setLightboxUrl(url)}
             onManageCategories={() => setCategoriesModal(true)}
           />
@@ -408,15 +397,15 @@ export function DashboardPage({ db: fsData }) {
           onSave={handleEditStop} onClose={() => setEditStopModal(null)} />
       )}
 
-      <RefusePurchaseModal refuseModal={refuseModal} refuseReason={refuseReason} setRefuseReason={setRefuseReason}
-        refusing={refusing} onRefuse={refusePurchase} onClose={() => { setRefuseModal(null); setRefuseReason(""); }} />
+      <RefuseExpenseModal refuseModal={refuseModal} refuseReason={refuseReason} setRefuseReason={setRefuseReason}
+        refusing={refusing} onRefuse={refuseExpense} onClose={() => { setRefuseModal(null); setRefuseReason(""); }} />
 
-      <DeletePurchaseModal deletePurchaseModal={deletePurchaseModal}
-        onClose={() => setDeletePurchaseModal(null)} onDelete={handleDeletePurchase} />
+      <DeleteExpenseModal deleteExpenseModal={deleteExpenseModal}
+        onClose={() => setDeleteExpenseModal(null)} onDelete={handleDeleteExpense} />
 
-      <NewPurchaseModal open={newPurchaseModal} onClose={() => !submittingPurchase && setNewPurchaseModal(false)}
-        newPurchase={newPurchase} setNewPurchase={setNewPurchase} categories={categories}
-        onSubmit={submitPurchase} submitting={submittingPurchase} />
+      <NewExpenseModal open={newExpenseModal} onClose={() => !submittingExpense && setNewExpenseModal(false)}
+        newExpense={newExpense} setNewExpense={setNewExpense} categories={categories}
+        onSubmit={submitExpense} submitting={submittingExpense} />
 
       <CategoriesManager open={categoriesModal} onClose={() => setCategoriesModal(false)} categories={categories}
         addCategory={addCategory} updateCategory={updateCategory} deleteCategory={deleteCategory} showToast={showToast} />

@@ -1,15 +1,54 @@
-// src/dashboard/sections/PurchasesSubmitView.jsx
+// src/dashboard/sections/ExpensesSubmitView.jsx
+import { useState } from "react";
 import { fmtDate } from "../../utils/helpers";
+import { PageHeader } from "../../components/PageHeader";
+import { FilterBar } from "../../components/FilterBar";
 
-export function PurchasesSubmitView({ purchases, categories, onNewPurchase, onPhotoClick }) {
+export function ExpensesSubmitView({ purchases, categories, onNewExpense, onPhotoClick }) {
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchText, setSearchText] = useState("");
+
+  const norm = searchText.trim().toLowerCase();
+  const filtered = purchases.filter(p => {
+    if (statusFilter !== "all" && p.status !== statusFilter) return false;
+    if (!norm) return true;
+    return [p.description, p.categoryLabel].join(" ").toLowerCase().includes(norm);
+  });
+
+  const pendingCount  = purchases.filter(p => p.status === "pending").length;
+  const approvedCount = purchases.filter(p => p.status === "approved").length;
+  const refusedCount  = purchases.filter(p => p.status === "refused").length;
+
   return (
     <div>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16, gap:10, flexWrap:"wrap" }}>
-        <p style={{ fontSize:14, color:"#8E8E93" }}>Tes demandes de remboursement et leur statut.</p>
-        <button className="btn btn-primary" style={{ padding:"9px 16px", fontSize:13 }} onClick={onNewPurchase} disabled={categories.length === 0} title={categories.length === 0 ? "Aucune catégorie disponible" : ""}>
-          + Nouvelle demande
-        </button>
-      </div>
+      <PageHeader
+        title="🧾 Mes dépenses"
+        total={purchases.length}
+        filteredCount={filtered.length}
+        search={{ value: searchText, onChange: setSearchText, placeholder: "Rechercher…" }}
+        button={{ text: "+ Nouvelle demande", onClick: onNewExpense, disabled: categories.length === 0, title: categories.length === 0 ? "Aucune catégorie disponible" : "" }}
+        filters={[
+          <FilterBar
+            key="fb-es"
+            hasFilters={statusFilter !== "all" || searchText.trim()}
+            onReset={() => { setStatusFilter("all"); setSearchText(""); }}
+            filters={[
+              {
+                key: "status",
+                type: "toggle-group",
+                value: statusFilter,
+                onChange: setStatusFilter,
+                options: [
+                  { value: "all", label: `Toutes (${purchases.length})`, color: "#6D6D72" },
+                  { value: "pending", label: `⏳ En attente (${pendingCount})`, color: "#FF9500" },
+                  { value: "approved", label: `✅ Approuvées (${approvedCount})`, color: "#34C759" },
+                  { value: "refused", label: `❌ Refusées (${refusedCount})`, color: "#FF3B30" },
+                ],
+              },
+            ]}
+          />,
+        ]}
+      />
 
       {categories.length === 0 && (
         <div className="card" style={{ textAlign:"center", padding:24, marginBottom:12, background:"#FFF8E1", borderLeft:"4px solid #FF9500" }}>
@@ -18,15 +57,15 @@ export function PurchasesSubmitView({ purchases, categories, onNewPurchase, onPh
         </div>
       )}
 
-      {purchases.length === 0 && categories.length > 0 && (
+      {filtered.length === 0 && categories.length > 0 && (
         <div className="card" style={{ textAlign:"center", padding:40 }}>
           <div style={{ fontSize:40, marginBottom:12 }}>🧾</div>
           <p style={{ fontWeight:600 }}>Aucune demande</p>
-          <p style={{ fontSize:12, color:"#8E8E93", marginTop:4 }}>Clique sur « + Nouvelle demande » pour soumettre un remboursement.</p>
+          <p style={{ fontSize:12, color:"#8E8E93", marginTop:4 }}>Clique sur « + Nouvelle demande » pour soumettre une demande de remboursement.</p>
         </div>
       )}
 
-      {purchases.map(p => (
+      {filtered.map(p => (
         <div key={p.id} className="oc card" style={{ marginBottom:12, borderLeft:`4px solid ${p.status==="approved"?"#34C759":p.status==="refused"?"#FF3B30":"#FF9500"}` }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:12, flexWrap:"wrap" }}>
             <div style={{ flex:1, minWidth:0 }}>
@@ -48,7 +87,7 @@ export function PurchasesSubmitView({ purchases, categories, onNewPurchase, onPh
             {p.photoUrl && (
               <button type="button" onClick={() => onPhotoClick?.(p.photoUrl)}
                 style={{ flex:"0 0 auto", border:"none", padding:0, cursor:"pointer", borderRadius:10, overflow:"hidden", background:"#F2F2F7" }} title="Voir la facture">
-                <img src={p.photoUrl} alt="Facture" style={{ width:72, height:72, objectFit:"cover", display:"block" }}/>
+                <img src={p.photoUrl} alt="Facture" style={{ width:72, height:72, objectFit:"cover", display:"block"}}/>
               </button>
             )}
           </div>

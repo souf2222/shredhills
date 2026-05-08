@@ -1,7 +1,7 @@
-// src/dashboard/modals/RefusePurchaseModal.jsx
+// src/dashboard/modals/RefuseExpenseModal.jsx
 import { Modal } from "../../components/Modal";
 
-export function RefusePurchaseModal({ refuseModal, refuseReason, setRefuseReason, refusing, onRefuse, onClose }) {
+export function RefuseExpenseModal({ refuseModal, refuseReason, setRefuseReason, refusing, onRefuse, onClose }) {
   return (
     <Modal open={!!refuseModal} onClose={() => !refusing && onClose()} title="❌ Refuser la demande" maxWidth={460}>
       {refuseModal && (

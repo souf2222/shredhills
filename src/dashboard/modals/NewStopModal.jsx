@@ -1,8 +1,19 @@
 // src/dashboard/modals/NewStopModal.jsx
 export function NewStopModal({ newStop, setNewStop, drivers, tourneeDate, setTourneeDate, onAdd, onClose }) {
-  const getTourneeDateStr = () => {
-    if (!tourneeDate || isNaN(tourneeDate.getTime())) return "";
-    return tourneeDate.toISOString().split("T")[0];
+  const hasTourneeDate = tourneeDate !== undefined && setTourneeDate !== undefined;
+
+  const getDateStr = () => {
+    const d = hasTourneeDate ? tourneeDate : newStop.scheduledDate;
+    if (!d || isNaN(d.getTime())) return "";
+    return d.toISOString().split("T")[0];
+  };
+
+  const setDate = (val) => {
+    if (hasTourneeDate) {
+      setTourneeDate(val ? new Date(val + "T12:00:00") : new Date());
+    } else {
+      setNewStop(n => ({ ...n, scheduledDate: val ? new Date(val + "T12:00:00") : null }));
+    }
   };
 
   return (
@@ -29,7 +40,7 @@ export function NewStopModal({ newStop, setNewStop, drivers, tourneeDate, setTou
           </div>
           <div>
             <label className="lbl">Date</label>
-            <input type="date" className="inp" value={getTourneeDateStr()} onChange={e => e.target.value ? setTourneeDate(new Date(e.target.value + "T12:00:00")) : setTourneeDate(new Date())}/>
+            <input type="date" className="inp" value={getDateStr()} onChange={e => setDate(e.target.value)}/>
           </div>
           <div><label className="lbl">Client</label><input className="inp" placeholder="Sophie Tremblay" value={newStop.clientName} onChange={e => setNewStop(n => ({...n,clientName:e.target.value}))}/></div>
           <div><label className="lbl">Téléphone</label><input className="inp" type="tel" placeholder="514-555-0101" value={newStop.clientPhone} onChange={e => setNewStop(n => ({...n,clientPhone:e.target.value}))}/></div>
