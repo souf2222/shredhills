@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { toDateKey, groupStopsByDate, DAY } from "../utils/helpers";
 import { PageHeader } from "../components/PageHeader";
 import { FilterBar } from "../components/FilterBar";
 import { AdminStopRow } from "../components/AdminStopRow";
@@ -60,8 +61,8 @@ export function GestionRoutesSection({ stops, drivers, addStop, updateStop, dele
     const stop = stops.find(s => s.id === stopId);
     if (!stop || !stop.scheduledDate) return;
 
-    const dateStr = stop.scheduledDate.toDate ? stop.scheduledDate.toDate().toDateString() : new Date(stop.scheduledDate).toDateString();
-    const driverStops = stops.filter(s => s.assignedTo === stop.assignedTo && s.scheduledDate && (s.scheduledDate.toDate ? s.scheduledDate.toDate().toDateString() : new Date(s.scheduledDate).toDateString()) === dateStr);
+    const dateStr = toDateKey(stop.scheduledDate);
+    const driverStops = stops.filter(s => s.assignedTo === stop.assignedTo && s.scheduledDate && toDateKey(s.scheduledDate) === dateStr);
     const sorted = [...driverStops].sort((a, b) => (a.order || 0) - (b.order || 0));
     const idx = sorted.findIndex(s => s.id === stopId);
     if (idx === -1) return;
@@ -133,18 +134,7 @@ export function GestionRoutesSection({ stops, drivers, addStop, updateStop, dele
         if (!hasAny && (searchText.trim() || statusFilter !== "all")) return null;
 
         const driverStops = filteredStops.filter(s => s.assignedTo === driver.id);
-
-        const stopsByDate = {};
-        const noDateStops = [];
-        driverStops.forEach(stop => {
-          if (!stop.scheduledDate) {
-            noDateStops.push(stop);
-          } else {
-            const dateKey = stop.scheduledDate.toDate ? stop.scheduledDate.toDate().toDateString() : new Date(stop.scheduledDate).toDateString();
-            if (!stopsByDate[dateKey]) stopsByDate[dateKey] = [];
-            stopsByDate[dateKey].push(stop);
-          }
-        });
+        const { stopsByDate, noDateStops } = groupStopsByDate(driverStops);
 
         const sortedDates = Object.keys(stopsByDate).sort((a, b) => new Date(a) - new Date(b));
         const totalPending = driverStops.filter(s => s.status === "pending").length;
@@ -180,7 +170,7 @@ export function GestionRoutesSection({ stops, drivers, addStop, updateStop, dele
               const dateOnly = new Date(dateObj); dateOnly.setHours(0, 0, 0, 0);
               let dateLabel;
               if (dateOnly.getTime() === today.getTime()) dateLabel = "Aujourd'hui";
-              else if (dateOnly.getTime() === today.getTime() + 86400000) dateLabel = "Demain";
+              else if (dateOnly.getTime() === today.getTime() + DAY) dateLabel = "Demain";
               else dateLabel = dateObj.toLocaleDateString("fr-CA", { weekday: "short", day: "numeric", month: "short" });
 
               const pending = dateStops.filter(s => s.status === "pending");

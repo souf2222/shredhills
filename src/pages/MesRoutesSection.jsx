@@ -1,4 +1,4 @@
-import { fmtTime } from "../utils/helpers";
+import { fmtTime, groupStopsByDate, DAY } from "../utils/helpers";
 import { PageHeader } from "../components/PageHeader";
 import { DriverStopCard } from "../components/DriverStopCard";
 import { CompletedStopCard } from "../components/CompletedStopCard";
@@ -7,18 +7,7 @@ export function MesRoutesSection({ stops, updateStop, userProfile, showToast }) 
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
   const myStops = stops.filter(s => s.assignedTo === userProfile.id);
-
-  const stopsByDate = {};
-  const noDateStops = [];
-  myStops.forEach(stop => {
-    if (!stop.scheduledDate) {
-      noDateStops.push(stop);
-    } else {
-      const dateKey = stop.scheduledDate.toDate ? stop.scheduledDate.toDate().toDateString() : new Date(stop.scheduledDate).toDateString();
-      if (!stopsByDate[dateKey]) stopsByDate[dateKey] = [];
-      stopsByDate[dateKey].push(stop);
-    }
-  });
+  const { stopsByDate, noDateStops } = groupStopsByDate(myStops);
 
   const sortedDates = Object.keys(stopsByDate).sort((a, b) => new Date(a) - new Date(b));
 
@@ -55,7 +44,7 @@ export function MesRoutesSection({ stops, updateStop, userProfile, showToast }) 
         const dateOnly = new Date(dateObj); dateOnly.setHours(0, 0, 0, 0);
         let dateLabel;
         if (dateOnly.getTime() === today.getTime()) dateLabel = "Aujourd'hui";
-        else if (dateOnly.getTime() === today.getTime() + 86400000) dateLabel = "Demain";
+        else if (dateOnly.getTime() === today.getTime() + DAY) dateLabel = "Demain";
         else dateLabel = dateObj.toLocaleDateString("fr-CA", { weekday: "long", day: "numeric", month: "long" });
 
         const pending = dateStops.filter(s => s.status === "pending");

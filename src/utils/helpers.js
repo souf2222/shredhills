@@ -2,6 +2,34 @@
 
 export const DAY = 86400000;
 
+/** Normalize a Firestore Timestamp or JS date value to a locale date string key. */
+export const toDateKey = (dateLike) => {
+  const d = dateLike?.toDate ? dateLike.toDate() : new Date(dateLike);
+  return d.toDateString();
+};
+
+/** Group stops by scheduled date. Returns { stopsByDate: Record<string, Stop[]>, noDateStops: Stop[] }. */
+export const groupStopsByDate = (stops) => {
+  const stopsByDate = {};
+  const noDateStops = [];
+  stops.forEach((stop) => {
+    if (!stop.scheduledDate) {
+      noDateStops.push(stop);
+    } else {
+      const key = toDateKey(stop.scheduledDate);
+      if (!stopsByDate[key]) stopsByDate[key] = [];
+      stopsByDate[key].push(stop);
+    }
+  });
+  return { stopsByDate, noDateStops };
+};
+
+/** Today's date as YYYY-MM-DD for <input type="date"> defaults. */
+export const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
 export const fmtMs = (ms) => {
   const s = Math.floor(ms / 1000), h = Math.floor(s / 3600),
     m = Math.floor((s % 3600) / 60), sec = s % 60;

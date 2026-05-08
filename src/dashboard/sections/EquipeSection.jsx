@@ -4,7 +4,7 @@ import { FilterBar } from "../../components/FilterBar";
 
 export function EquipeSection({ users, userProfile, equipeSearch, setEquipeSearch, equipeRole, setEquipeRole, onUserClick, onNewUser }) {
   const equipeFiltered = users.filter(u => {
-    const okRole = equipeRole === "all" ? true : equipeRole === "admin" ? u.role === "admin" : (u.jobs || []).includes(equipeRole);
+    const okRole = equipeRole === "all" ? true : u.role === equipeRole;
     return okRole && [u.displayName, u.email].join(" ").toLowerCase().includes(equipeSearch.trim().toLowerCase());
   });
 
@@ -21,9 +21,7 @@ export function EquipeSection({ users, userProfile, equipeSearch, setEquipeSearc
             { key: "role", type: "select", value: equipeRole, onChange: setEquipeRole, options: [
               { value: "all", label: "Tous les rôles" },
               { value: "admin", label: "Admin" },
-              { value: "employee", label: "Employé" },
-              { value: "driver", label: "Livreur" },
-              { value: "accountant", label: "Comptable" }
+              { value: "user", label: "Utilisateur" }
             ]}
           ]} />
         ]}

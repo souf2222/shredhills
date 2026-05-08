@@ -31,15 +31,9 @@ import { NewExpenseModal } from "../dashboard/modals/NewExpenseModal";
 import { RefuseExpenseModal } from "../dashboard/modals/RefuseExpenseModal";
 import { DeleteExpenseModal } from "../dashboard/modals/DeleteExpenseModal";
 
-import { DAY } from "../dashboard/constants";
-
-const todayStr = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-};
+import { todayStr, toDateKey } from "../utils/helpers";
 
 export function DashboardPage({ db: fsData }) {
-  const { userProfile, can } = useAuth();
   const {
     users, orders, stops, punches, purchases, events, categories,
     updateUser, deleteUser,
@@ -210,8 +204,8 @@ export function DashboardPage({ db: fsData }) {
   const handleMoveStop = async (stopId, direction) => {
     const stop = stops.find(s => s.id === stopId);
     if (!stop || !stop.scheduledDate) return;
-    const dateStr = stop.scheduledDate.toDate ? stop.scheduledDate.toDate().toDateString() : new Date(stop.scheduledDate).toDateString();
-    const driverStops = stops.filter(s => s.assignedTo === stop.assignedTo && s.scheduledDate && (s.scheduledDate.toDate ? s.scheduledDate.toDate().toDateString() : new Date(s.scheduledDate).toDateString()) === dateStr);
+    const dateStr = toDateKey(stop.scheduledDate);
+    const driverStops = stops.filter(s => s.assignedTo === stop.assignedTo && s.scheduledDate && toDateKey(s.scheduledDate) === dateStr);
     const sorted = [...driverStops].sort((a,b) => (a.order||0) - (b.order||0));
     const idx = sorted.findIndex(s => s.id === stopId);
     if (idx === -1) return;
