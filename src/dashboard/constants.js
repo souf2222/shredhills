@@ -18,5 +18,3 @@ export const COLORS = [
   "#FF6B35","#007AFF","#34C759","#FF9500",
   "#AF52DE","#FF3B30","#00C7BE","#5856D6","#111",
 ];
-
-export const DAY = 86400000;

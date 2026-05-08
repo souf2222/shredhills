@@ -1,9 +1,7 @@
 // src/dashboard/modals/OrderModal.jsx
 import { useState } from "react";
-import { getDL, fmtMs } from "../../utils/helpers";
+import { getDL, fmtMs, DAY } from "../../utils/helpers";
 import { MetaTags } from "../../components/MetaTags";
-
-const DAY = 86400000;
 
 export function OrderModal({ order, employees, users, onSave, onDelete, onClose }) {
   const isNew = !order?.id;
