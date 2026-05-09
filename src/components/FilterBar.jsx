@@ -9,22 +9,37 @@
  *  - hasFilters     boolean            Show reset button when true
  *  - children       ReactNode          Extra elements rendered after filters.
  */
+import { useState, useEffect } from "react";
+
 export function FilterBar({ filters = [], onReset, hasFilters, children }) {
+  const [openKey, setOpenKey] = useState(null);
+
+  useEffect(() => {
+    if (!openKey) return;
+    const handleDocClick = () => setOpenKey(null);
+    const timer = setTimeout(() => document.addEventListener("click", handleDocClick), 0);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("click", handleDocClick);
+    };
+  }, [openKey]);
+
   if (filters.length === 0 && !children) return null;
 
   return (
     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-start", marginBottom: 12 }}>
       {filters.map((f) => {
-        const style = {
+        const baseStyle = {
           background: "white",
-          border: "1px solid #E5E5EA",
-          borderRadius: 10,
-          padding: "8px 12px",
+          border: "1.5px solid #E5E5EA",
+          borderRadius: 20,
+          padding: "6px 13px",
           fontSize: 13,
-          fontWeight: 600,
+          fontWeight: 500,
           cursor: "pointer",
           fontFamily: "inherit",
-          minWidth: f.minWidth || 140,
+          whiteSpace: "nowrap",
+          color: "#3A3A3C",
         };
 
         if (f.type === "text") {
@@ -41,14 +56,62 @@ export function FilterBar({ filters = [], onReset, hasFilters, children }) {
         }
 
         if (f.type === "select") {
+          const isOpen = openKey === f.key;
+          const selected = f.options.find((o) => o.value === f.value);
           return (
-            <select key={f.key} value={f.value} onChange={(e) => f.onChange(e.target.value)} style={style}>
-              {f.options.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+            <div key={f.key} style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                onClick={() => setOpenKey(isOpen ? null : f.key)}
+                style={{
+                  ...baseStyle,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  borderColor: isOpen ? "#007AFF" : "#E5E5EA",
+                }}
+              >
+                {selected?.label || f.value}
+                <span style={{ fontSize: 9, opacity: 0.6 }}>▼</span>
+              </button>
+              {isOpen && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 6px)",
+                    left: 0,
+                    background: "white",
+                    borderRadius: 14,
+                    boxShadow: "0 10px 30px rgba(0,0,0,0.12)",
+                    border: "1px solid #E5E5EA",
+                    padding: 6,
+                    minWidth: 180,
+                    zIndex: 100,
+                  }}
+                >
+                  {f.options.map((o) => (
+                    <div
+                      key={o.value}
+                      onClick={() => {
+                        f.onChange(o.value);
+                        setOpenKey(null);
+                      }}
+                      style={{
+                        padding: "8px 12px",
+                        borderRadius: 10,
+                        fontSize: 13,
+                        fontWeight: f.value === o.value ? 700 : 400,
+                        color: f.value === o.value ? "#007AFF" : "#3A3A3C",
+                        cursor: "pointer",
+                        background: f.value === o.value ? "#007AFF18" : "transparent",
+                      }}
+                    >
+                      {o.label}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           );
         }
 
@@ -92,7 +155,7 @@ export function FilterBar({ filters = [], onReset, hasFilters, children }) {
               type="date"
               value={f.value}
               onChange={(e) => f.onChange(e.target.value)}
-              style={{ ...style, cursor: "text" }}
+              style={{ ...baseStyle, cursor: "text" }}
             />
           );
         }
@@ -104,14 +167,14 @@ export function FilterBar({ filters = [], onReset, hasFilters, children }) {
                 type="date"
                 value={f.value?.from || ""}
                 onChange={(e) => f.onChange({ ...f.value, from: e.target.value })}
-                style={{ ...style, cursor: "text" }}
+                style={{ ...baseStyle, cursor: "text" }}
               />
               <span style={{ color: "#8E8E93" }}>à</span>
               <input
                 type="date"
                 value={f.value?.to || ""}
                 onChange={(e) => f.onChange({ ...f.value, to: e.target.value })}
-                style={{ ...style, cursor: "text" }}
+                style={{ ...baseStyle, cursor: "text" }}
               />
             </div>
           );
@@ -120,13 +183,18 @@ export function FilterBar({ filters = [], onReset, hasFilters, children }) {
         return null;
       })}
 
-      {children}
-
-      {hasFilters && onReset && (
-        <button className="btn btn-outline" style={{ padding: "8px 12px", fontSize: 12 }} onClick={onReset}>
-          ✕ Réinitialiser
+      {hasFilters && (
+        <button
+          type="button"
+          className="btn"
+          onClick={onReset}
+          style={{ fontSize: 13, padding: "6px 13px", borderRadius: 20, whiteSpace: "nowrap", marginLeft: "auto" }}
+        >
+          Réinitialiser
         </button>
       )}
+
+      {children}
     </div>
   );
 }

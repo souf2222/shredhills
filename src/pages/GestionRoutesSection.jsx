@@ -15,15 +15,18 @@ import { AdminStopRow } from "../components/AdminStopRow";
 import { NewStopModal } from "../dashboard/modals/NewStopModal";
 import { EditStopModal } from "../dashboard/modals/EditStopModal";
 
-export function GestionRoutesSection({ stops, drivers, addStop, updateStop, deleteStop, showToast }) {
+export function GestionRoutesSection({ stops, drivers, contacts, addStop, updateStop, deleteStop, showToast }) {
   const [newStopModal, setNewStopModal] = useState(false);
   const [editStopModal, setEditStopModal] = useState(null);
   const [newStop, setNewStop] = useState({
-    type: "delivery", clientName: "", clientPhone: "", address: "", instructions: "", assignedTo: "", scheduledDate: null, order: 0
+    type: "delivery", contactId: null, clientName: "", clientPhone: "", address: "", instructions: "", assignedTo: "", scheduledDate: null, order: 0
   });
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [driverFilter, setDriverFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("today");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const todayMs = today.getTime();
@@ -32,6 +35,28 @@ export function GestionRoutesSection({ stops, drivers, addStop, updateStop, dele
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } })
   );
+
+  const dateMatchesFilter = (dateLike) => {
+    if (!dateLike) return dateFilter === "today" || dateFilter === "week";
+    const dateObj = dateLike?.toDate ? dateLike.toDate() : new Date(dateLike);
+    if (isNaN(dateObj.getTime())) return false;
+    const d = new Date(dateObj); d.setHours(0, 0, 0, 0);
+    const ms = d.getTime();
+    if (dateFilter === "today") return ms === todayMs;
+    if (dateFilter === "tomorrow") return ms === todayMs + DAY;
+    if (dateFilter === "week") {
+      const dayOfWeek = today.getDay() || 7;
+      const monday = todayMs - (dayOfWeek - 1) * DAY;
+      const sunday = monday + 6 * DAY;
+      return ms >= monday && ms <= sunday;
+    }
+    if (dateFilter === "custom" && customStart) {
+      const s = new Date(customStart).getTime();
+      const e = customEnd ? new Date(customEnd).getTime() + DAY - 1 : s + DAY - 1;
+      return ms >= s && ms <= e;
+    }
+    return true;
+  };
 
   const handleAddStop = async () => {
     if (!newStop.clientName || !newStop.address) return;
@@ -48,7 +73,7 @@ export function GestionRoutesSection({ stops, drivers, addStop, updateStop, dele
       orderId: null,
       order: maxOrder + 1
     });
-    setNewStop({ type: "delivery", clientName: "", clientPhone: "", address: "", instructions: "", assignedTo: "", scheduledDate: null, order: 0 });
+    setNewStop({ type: "delivery", contactId: null, clientName: "", clientPhone: "", address: "", instructions: "", assignedTo: "", scheduledDate: null, order: 0 });
     setNewStopModal(false);
     showToast && showToast("Arrêt ajouté !");
   };
@@ -56,6 +81,7 @@ export function GestionRoutesSection({ stops, drivers, addStop, updateStop, dele
   const handleEditStop = async () => {
     if (!editStopModal.clientName || !editStopModal.address) return;
     await updateStop(editStopModal.id, {
+      contactId: editStopModal.contactId || null,
       clientName: editStopModal.clientName,
       clientPhone: editStopModal.clientPhone,
       address: editStopModal.address,
@@ -109,6 +135,7 @@ export function GestionRoutesSection({ stops, drivers, addStop, updateStop, dele
     return stops.filter(s => {
       if (statusFilter !== "all" && s.status !== statusFilter) return false;
       if (driverFilter !== "all" && s.assignedTo !== driverFilter) return false;
+      if (!dateMatchesFilter(s.scheduledDate)) return false;
       if (!norm) return true;
       return (
         (s.clientName || "").toLowerCase().includes(norm) ||
@@ -116,7 +143,7 @@ export function GestionRoutesSection({ stops, drivers, addStop, updateStop, dele
         (s.instructions || "").toLowerCase().includes(norm)
       );
     });
-  }, [stops, searchText, statusFilter, driverFilter]);
+  }, [stops, searchText, statusFilter, driverFilter, dateFilter, customStart, customEnd]);
 
   const stopsByDriver = useMemo(() => {
     const byDriver = {};
@@ -136,7 +163,7 @@ export function GestionRoutesSection({ stops, drivers, addStop, updateStop, dele
     if (!d.permissions?.canViewDeliveries) return false;
     const hasAnyFiltered = filteredStops.some(s => s.assignedTo === d.id);
     if (driverFilter === d.id) return true;
-    if (searchText.trim() || statusFilter !== "all") return hasAnyFiltered;
+    if (searchText.trim() || statusFilter !== "all" || dateFilter !== "today") return hasAnyFiltered;
     return true;
   });
 
@@ -146,9 +173,45 @@ export function GestionRoutesSection({ stops, drivers, addStop, updateStop, dele
 
   const driverOptions = [
     { value: "all", label: "Tous les livreurs" },
-    { value: "", label: `Non assignés (${unassignedCount})` },
-    ...drivers.filter(d => d.permissions?.canViewDeliveries).map(d => ({ value: d.id, label: d.displayName })),
+    ...(unassignedCount > 0
+      ? [{ value: "", label: `Non assignés (${unassignedCount})` }]
+      : []),
+    ...drivers
+    .filter(d => d.permissions?.canViewDeliveries)
+    .map(d => ({ value: d.id, label: d.displayName })),
   ];
+
+  const showNoDateUnassigned = dateFilter === "today" || dateFilter === "week";
+
+  const hasAnyVisibleStop =
+    driversToShow.length > 0 ||
+    (showNoDateUnassigned && stopsByDriver.unassigned.length > 0) ||
+    stopsByDriver.unassigned.some(s => dateMatchesFilter(s.scheduledDate));
+
+  // Recompute which dates pass the filter for a given driver
+  const getFilteredDatesForDriver = (driverStops) => {
+    const { stopsByDate, noDateStops } = groupStopsByDate(driverStops);
+    const sortedDatesAll = Object.keys(stopsByDate).sort((a, b) => new Date(a) - new Date(b));
+    const filteredDates = sortedDatesAll.filter(dk => {
+      const d = new Date(dk); d.setHours(0, 0, 0, 0);
+      const ms = d.getTime();
+      if (dateFilter === "today") return ms === todayMs;
+      if (dateFilter === "tomorrow") return ms === todayMs + DAY;
+      if (dateFilter === "week") {
+        const dayOfWeek = today.getDay() || 7;
+        const monday = todayMs - (dayOfWeek - 1) * DAY;
+        const sunday = monday + 6 * DAY;
+        return ms >= monday && ms <= sunday;
+      }
+      if (dateFilter === "custom" && customStart) {
+        const s = new Date(customStart).getTime();
+        const e = customEnd ? new Date(customEnd).getTime() + DAY - 1 : s + DAY - 1;
+        return ms >= s && ms <= e;
+      }
+      return true;
+    });
+    return { filteredDates, stopsByDate, noDateStops };
+  };
 
   const renderDateGroup = (driverId, dateKey, allStops) => {
     const dateStops = [...allStops].sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -201,20 +264,46 @@ export function GestionRoutesSection({ stops, drivers, addStop, updateStop, dele
         />
 
         <FilterBar
-          hasFilters={statusFilter !== "all" || searchText.trim().length > 0 || driverFilter !== "all"}
-          onReset={() => { setStatusFilter("all"); setSearchText(""); setDriverFilter("all"); }}
+          hasFilters={statusFilter !== "all" || searchText.trim().length > 0 || driverFilter !== "all" || dateFilter !== "today" || customStart}
+          onReset={() => { setStatusFilter("all"); setSearchText(""); setDriverFilter("all"); setDateFilter("today"); setCustomStart(""); setCustomEnd(""); }}
           filters={[
             {
-              key: "status",
+              key: "dateFilter",
               type: "toggle-group",
+              value: dateFilter,
+              options: [
+                { value: "today", label: "Aujourd'hui", color: "#007AFF" },
+                { value: "tomorrow", label: "Demain", color: "#007AFF" },
+                { value: "week", label: "Cette semaine", color: "#007AFF" },
+                { value: "custom", label: "Personnalisé", color: "#007AFF" },
+              ],
+              onChange: setDateFilter,
+            },
+            ...(dateFilter === "custom"
+              ? [
+                  {
+                    key: "customRange",
+                    type: "date-range",
+                    value: { from: customStart, to: customEnd },
+                    onChange: (val) => {
+                      setCustomStart(val.from || "");
+                      setCustomEnd(val.to || "");
+                    },
+                  },
+                ]
+              : []),
+            {
+              key: "status",
+              type: "select",
+              label: "Statut",
               value: statusFilter,
               onChange: setStatusFilter,
               options: [
-                { value: "all", label: "Toutes", color: "#6D6D72" },
-                { value: "pending", label: "À faire", color: "#AF52DE" },
-                { value: "doing", label: "En cours", color: "#FF9500" },
-                { value: "completed", label: "Complétés", color: "#34C759" },
-                { value: "failed", label: "Échoués", color: "#FF3B30" },
+                { value: "all", label: "Tous les statuts" },
+                { value: "pending", label: "À faire" },
+                { value: "doing", label: "En cours" },
+                { value: "completed", label: "Complétés" },
+                { value: "failed", label: "Échoués" },
               ],
             },
             {
@@ -227,7 +316,7 @@ export function GestionRoutesSection({ stops, drivers, addStop, updateStop, dele
           ]}
         />
 
-        {(driverFilter === "all" || driverFilter === "") && stopsByDriver.unassigned.length > 0 && (
+        {(driverFilter === "all" || driverFilter === "") && showNoDateUnassigned && stopsByDriver.unassigned.length > 0 && (
           <div className="card" style={{ marginBottom: 16, borderLeft: "4px solid #8E8E93" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -254,22 +343,21 @@ export function GestionRoutesSection({ stops, drivers, addStop, updateStop, dele
           </div>
         )}
 
+        {!hasAnyVisibleStop && drivers.length > 0 && (
+          <div className="card" style={{ textAlign: "center", padding: 48, marginTop: 10 }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🚐</div>
+            <p style={{ fontWeight: 700, fontSize: 17, color: "#1C1C1E" }}>Aucun arrêt</p>
+            <p style={{ color: "#8E8E93", fontSize: 14, marginTop: 4 }}>Aucun arrêt pour cette période</p>
+          </div>
+        )}
+
         {driversToShow.map(driver => {
           const driverStops = filteredStops.filter(s => s.assignedTo === driver.id);
-          const { stopsByDate, noDateStops } = groupStopsByDate(driverStops);
+          const { filteredDates, stopsByDate, noDateStops } = getFilteredDatesForDriver(driverStops);
 
           if ((searchText.trim() || statusFilter !== "all" || driverFilter !== "all") && driverStops.length === 0) {
             return null;
           }
-
-          const sortedDatesAll = Object.keys(stopsByDate).sort((a, b) => new Date(a) - new Date(b));
-          const activeDates = sortedDatesAll.filter(dk => {
-            const d = new Date(dk); d.setHours(0, 0, 0, 0); return d.getTime() >= todayMs;
-          });
-          const pastDates = sortedDatesAll.filter(dk => {
-            const d = new Date(dk); d.setHours(0, 0, 0, 0); return d.getTime() < todayMs;
-          });
-          const pastStops = pastDates.flatMap(dateKey => stopsByDate[dateKey]).sort((a, b) => (a.order || 0) - (b.order || 0));
 
           const totalPending = driverStops.filter(s => s.status === "pending").length;
           const totalDoing = driverStops.filter(s => s.status === "doing").length;
@@ -296,22 +384,11 @@ export function GestionRoutesSection({ stops, drivers, addStop, updateStop, dele
                 </div>
               </div>
 
-              {activeDates.length === 0 && pastStops.length === 0 && noDateStops.length === 0 && (
+              {filteredDates.length === 0 && noDateStops.length === 0 && (
                 <p style={{ fontSize: 13, color: "#C7C7CC", textAlign: "center", padding: "10px 0" }}>Aucun arrêt</p>
               )}
 
-              {activeDates.map(dateKey => renderDateGroup(driver.id, dateKey, stopsByDate[dateKey]))}
-
-              {pastStops.length > 0 && (
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "2px dashed #E5E5EA" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, paddingBottom: 8, borderBottom: "1px solid #E5E5EA" }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#8E8E93" }}>📅 Passés</span>
-                  </div>
-                  {pastStops.map((stop, i) => (
-                    <AdminStopRow key={stop.id} stop={stop} index={i} onClick={() => setEditStopModal(stop)} />
-                  ))}
-                </div>
-              )}
+              {filteredDates.map(dateKey => renderDateGroup(driver.id, dateKey, stopsByDate[dateKey]))}
 
               {noDateStops.length > 0 && (
                 <div style={{ marginTop: 16, paddingTop: 12, borderTop: "2px dashed #E5E5EA" }}>
@@ -330,6 +407,7 @@ export function GestionRoutesSection({ stops, drivers, addStop, updateStop, dele
             newStop={newStop}
             setNewStop={setNewStop}
             drivers={drivers}
+            contacts={contacts}
             onAdd={handleAddStop}
             onClose={() => setNewStopModal(false)}
           />
@@ -340,6 +418,7 @@ export function GestionRoutesSection({ stops, drivers, addStop, updateStop, dele
             editStopModal={editStopModal}
             setEditStopModal={setEditStopModal}
             drivers={drivers}
+            contacts={contacts}
             onSave={handleEditStop}
             onClose={() => setEditStopModal(null)}
             onDelete={() => handleDeleteStop(editStopModal.id)}

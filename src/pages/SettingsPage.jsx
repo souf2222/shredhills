@@ -250,7 +250,7 @@ export function SettingsPage({ showToast }) {
               style={{ flex:1, justifyContent:"center" }}
               disabled={submitting}
             >
-              {submitting ? <><span className="sp"/> Mise à jour…</> : "🔒 Mettre à jour le mot de passe"}
+              {submitting ? <><span className="sp"/> Mise à jour…</> : "Mettre à jour le mot de passe"}
             </button>
           </div>
         </form>

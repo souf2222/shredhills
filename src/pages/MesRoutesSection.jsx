@@ -8,8 +8,9 @@ import {
   closestCenter,
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
-import { groupStopsByDate, DAY, toDateKey } from "../utils/helpers";
+import { groupStopsByDate, DAY } from "../utils/helpers";
 import { PageHeader } from "../components/PageHeader";
+import { FilterBar } from "../components/FilterBar";
 import { DriverStopRow } from "../components/DriverStopRow";
 import { StopDetailModal } from "../dashboard/modals/StopDetailModal";
 
@@ -40,7 +41,6 @@ function StaticRow({ stop, index, onClick }) {
         opacity: 0.7,
       }}
     >
-      <div style={{ width: 20 }} />
       <div
         style={{
           width: 28,
@@ -83,17 +83,57 @@ export function MesRoutesSection({ stops, updateStop, userProfile, showToast }) 
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const todayMs = today.getTime();
 
+  const [dateFilter, setDateFilter] = useState("today");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+  const [detailModal, setDetailModal] = useState(null);
+
   const myStops = stops.filter(s => s.assignedTo === userProfile.id);
   const { stopsByDate, noDateStops } = groupStopsByDate(myStops);
 
   const sortedDates = Object.keys(stopsByDate).sort((a, b) => new Date(a) - new Date(b));
 
-  const totalPending = myStops.filter(s => s.status === "pending").length;
-  const totalDoing = myStops.filter(s => s.status === "doing").length;
-  const totalCompleted = myStops.filter(s => s.status === "completed").length;
-  const totalFailed = myStops.filter(s => s.status === "failed").length;
+  const getFilteredDates = () => {
+    if (dateFilter === "today") {
+      return sortedDates.filter(dk => {
+        const d = new Date(dk); d.setHours(0, 0, 0, 0);
+        return d.getTime() === todayMs;
+      });
+    }
+    if (dateFilter === "tomorrow") {
+      return sortedDates.filter(dk => {
+        const d = new Date(dk); d.setHours(0, 0, 0, 0);
+        return d.getTime() === todayMs + DAY;
+      });
+    }
+    if (dateFilter === "week") {
+      const dayOfWeek = today.getDay() || 7;
+      const monday = todayMs - (dayOfWeek - 1) * DAY;
+      const sunday = monday + 6 * DAY;
+      return sortedDates.filter(dk => {
+        const d = new Date(dk); d.setHours(0, 0, 0, 0);
+        return d.getTime() >= monday && d.getTime() <= sunday;
+      });
+    }
+    if (dateFilter === "custom" && customStart) {
+      const s = new Date(customStart).getTime();
+      const e = customEnd ? new Date(customEnd).getTime() + DAY - 1 : s + DAY - 1;
+      return sortedDates.filter(dk => {
+        const d = new Date(dk); d.setHours(0, 0, 0, 0);
+        return d.getTime() >= s && d.getTime() <= e;
+      });
+    }
+    return sortedDates;
+  };
 
-  const [detailModal, setDetailModal] = useState(null);
+  const filteredDateKeys = getFilteredDates();
+  const showNoDate = dateFilter === "today";
+  const visibleStops = filteredDateKeys.flatMap(dk => stopsByDate[dk]).concat(showNoDate ? noDateStops : []);
+
+  const totalPending = visibleStops.filter(s => s.status === "pending").length;
+  const totalDoing = visibleStops.filter(s => s.status === "doing").length;
+  const totalCompleted = visibleStops.filter(s => s.status === "completed").length;
+  const totalFailed = visibleStops.filter(s => s.status === "failed").length;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -148,10 +188,7 @@ export function MesRoutesSection({ stops, updateStop, userProfile, showToast }) 
     let dateLabel;
     if (isNoDate) dateLabel = "Sans date";
     else {
-      const dateOnly = new Date(dateObj); dateOnly.setHours(0, 0, 0, 0);
-      if (dateOnly.getTime() === todayMs) dateLabel = "Aujourd'hui";
-      else if (dateOnly.getTime() === todayMs + DAY) dateLabel = "Demain";
-      else dateLabel = dateObj.toLocaleDateString("fr-CA", { weekday: "long", day: "numeric", month: "long" });
+      dateLabel = dateObj.toLocaleDateString("fr-CA", { weekday: "long", day: "numeric", month: "long" });
     }
 
     const pendingCount = allStops.filter(s => s.status === "pending").length;
@@ -162,8 +199,7 @@ export function MesRoutesSection({ stops, updateStop, userProfile, showToast }) 
     return (
       <div key={dateKey} style={{ marginBottom: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, paddingBottom: 10, borderBottom: "2px solid #E5E5EA" }}>
-          <span style={{ fontSize: 16, fontWeight: 700, color: "#1C1C1E" }}>{isNoDate ? "🔲" : "📅"} {dateLabel}</span>
-          <span style={{ fontSize: 12, color: "#8E8E93" }}>{pendingCount} à faire, {doingCount} en cours, {completedCount} fait, {failedCount} échoué</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: "#1C1C1E" }}> {dateLabel}</span>
         </div>
 
         <div className="card" style={{ padding: "4px 16px" }}>
@@ -195,18 +231,10 @@ export function MesRoutesSection({ stops, updateStop, userProfile, showToast }) 
     );
   };
 
-  const activeDates = sortedDates.filter(dk => {
-    const d = new Date(dk); d.setHours(0, 0, 0, 0); return d.getTime() >= todayMs;
-  });
-  const pastDates = sortedDates.filter(dk => {
-    const d = new Date(dk); d.setHours(0, 0, 0, 0); return d.getTime() < todayMs;
-  });
-  const pastStops = pastDates.flatMap(dateKey => stopsByDate[dateKey]).sort((a, b) => (a.order || 0) - (b.order || 0));
-
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <div>
-        <PageHeader title="🚐 Mes tournées" total={myStops.length} />
+        <PageHeader title="Mes tournées" total={visibleStops.length} />
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
           {[
             { label: "À faire", val: totalPending, c: "#AF52DE" },
@@ -221,35 +249,47 @@ export function MesRoutesSection({ stops, updateStop, userProfile, showToast }) 
           ))}
         </div>
 
-        {sortedDates.length === 0 && noDateStops.length === 0 && (
-          <div className="card" style={{ textAlign: "center", padding: 48 }}>
+        <FilterBar
+          filters={[
+            {
+              key: "dateFilter",
+              type: "toggle-group",
+              value: dateFilter,
+              options: [
+                { value: "today", label: "Aujourd'hui", color: "#007AFF" },
+                { value: "tomorrow", label: "Demain", color: "#007AFF" },
+                { value: "week", label: "Cette semaine", color: "#007AFF" },
+                { value: "custom", label: "Personnalisé", color: "#007AFF" },
+              ],
+              onChange: setDateFilter,
+            },
+            ...(dateFilter === "custom"
+              ? [
+                  {
+                    key: "customRange",
+                    type: "date-range",
+                    value: { from: customStart, to: customEnd },
+                    onChange: (val) => {
+                      setCustomStart(val.from || "");
+                      setCustomEnd(val.to || "");
+                    },
+                  },
+                ]
+              : []),
+          ]}
+        />
+
+        {filteredDateKeys.length === 0 && !(showNoDate && noDateStops.length > 0) && (
+          <div className="card" style={{ textAlign: "center", padding: 48, marginTop: 10 }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>🚐</div>
-            <p style={{ fontWeight: 700, fontSize: 17 }}>Aucun arrêt</p>
+            <p style={{ fontWeight: 700, fontSize: 17, color: "#1C1C1E" }}>Aucun arrêt</p>
+            <p style={{ color: "#8E8E93", fontSize: 14, marginTop: 4 }}>Aucun arrêt pour cette période</p>
           </div>
         )}
 
-        {activeDates.map(dateKey => renderDateGroup(dateKey, stopsByDate[dateKey]))}
+        {filteredDateKeys.map(dateKey => renderDateGroup(dateKey, stopsByDate[dateKey]))}
 
-        {noDateStops.length > 0 && renderDateGroup("__nodate__", noDateStops)}
-
-        {pastStops.length > 0 && (
-          <div style={{ marginTop: 24 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, paddingBottom: 10, borderBottom: "2px solid #E5E5EA" }}>
-              <span style={{ fontSize: 16, fontWeight: 700, color: "#8E8E93" }}>📅 Passés</span>
-              <span style={{ fontSize: 12, color: "#8E8E93" }}>Arrêt(s) antérieur(s) à aujourd'hui</span>
-            </div>
-            <div className="card" style={{ padding: "4px 16px" }}>
-              {pastStops.map((stop, idx) => (
-                <StaticRow
-                  key={stop.id}
-                  stop={stop}
-                  index={idx}
-                  onClick={() => setDetailModal(stop)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+        {showNoDate && noDateStops.length > 0 && renderDateGroup("__nodate__", noDateStops)}
 
         {detailModal && (
           <StopDetailModal

@@ -10,7 +10,7 @@ const DAY = 86400000;
 const N = Date.now();
 
 const DEFAULT_PERMISSIONS = {
-  canManageUsers: false, canManageOrders: false, canManageEvents: false, canViewEvents: false,
+  canManageUsers: false, canManageOrders: false, canManageContacts: false, canManageEvents: false, canViewEvents: false,
   canManageExpenses: false, canManageDeliveries: false, canManageReports: false,
   canClockIn: false, canViewTasks: false, canSubmitExpenses: false
 };
@@ -19,7 +19,7 @@ const ADMIN_PERMISSIONS = Object.fromEntries(Object.keys(DEFAULT_PERMISSIONS).ma
 
 const ACCOUNTANT_PERMISSIONS = {
   ...DEFAULT_PERMISSIONS,
-  canManageUsers: true, canManageExpenses: true, canViewEvents: true,
+  canManageUsers: true, canManageExpenses: true, canManageContacts: true, canViewEvents: true,
   canManageReports: true, canClockIn: true, canSubmitExpenses: true,
 };
 
@@ -50,9 +50,17 @@ const INITIAL_EVENTS = [
   { id:"EVT-004", title:"Famille-chalet",       subtitle:"Weekend famille",   description:"Séjour au chalet",                            icon:"🏕",startDate:N+60*DAY,  endDate:N+62*DAY,           allDay:true,  location:"Estrie",             color:"#FF2D55", assignedTo:[], createdBy:"system" },
 ];
 
+const INITIAL_CONTACTS = [
+  { id:"CNT-001", name:"Sophie Tremblay", email:"sophie@example.com", phone:"514-555-0101", company:"Tremblay Design", street:"1234 rue Ste-Catherine", city:"Montréal", province:"QC", postalCode:"H3G 1R6", country:"CA", type:"client", notes:"Cliente régulière, préfère le contact par courriel" },
+  { id:"CNT-002", name:"Marc Bouchard", email:"marc@example.com", phone:"514-555-0202", company:"Bouchard Sports", street:"5678 boul. René-Lévesque", city:"Montréal", province:"QC", postalCode:"H2L 2L5", country:"CA", type:"client", notes:"" },
+  { id:"CNT-003", name:"Textiles Plus Inc.", email:"commandes@textilesplus.ca", phone:"450-555-0303", company:"Textiles Plus", street:"1000 rue Industrielle", city:"Laval", province:"QC", postalCode:"H7V 4A3", country:"CA", type:"supplier", notes:"Fournisseur principal de t-shirts en vrac" },
+  { id:"CNT-004", name:"Encres Québec", email:"info@encresqc.com", phone:"418-555-0404", company:"Encres Québec", street:"55 av. des Encres", city:"Québec", province:"QC", postalCode:"G1R 1A1", country:"CA", type:"supplier", notes:"Encres sérigraphie 4 couleurs CMJN" },
+  { id:"CNT-005", name:"Studio Graphix", email:"contact@studiographix.ca", phone:"514-555-0505", company:"Studio Graphix", street:"200 boul. Saint-Laurent", city:"Montréal", province:"QC", postalCode:"H2Y 2Y5", country:"CA", type:"partner", notes:"Partenaire pour les designs vectoriels" },
+];
+
 const INITIAL_ORDERS = [
-  { id:"CMD-001", clientName:"Sophie Tremblay", clientEmail:"sophie@example.com", description:"50x t-shirts blanc — logo devant, texte dos", assignedTo:null, status:"pending", startTime:null, endTime:null, elapsed:0, deadline:N+4*DAY },
-  { id:"CMD-002", clientName:"Marc Bouchard",  clientEmail:"marc@example.com",   description:"12x hoodies noir — impression sérigraphie",   assignedTo:null, status:"pending", startTime:null, endTime:null, elapsed:0, deadline:N+2*DAY },
+  { id:"CMD-001", clientName:"Sophie Tremblay", clientEmail:"sophie@example.com", contactId:"CNT-001", description:"50x t-shirts blanc — logo devant, texte dos", assignedTo:null, status:"pending", startTime:null, endTime:null, elapsed:0, deadline:N+4*DAY },
+  { id:"CMD-002", clientName:"Marc Bouchard",  clientEmail:"marc@example.com",   contactId:"CNT-002", description:"12x hoodies noir — impression sérigraphie",   assignedTo:null, status:"pending", startTime:null, endTime:null, elapsed:0, deadline:N+2*DAY },
 ];
 
 async function createOrGetAuthUser(email, password) {
@@ -120,6 +128,12 @@ export async function seedDatabase() {
   for (const ev of INITIAL_EVENTS) {
     await setDoc(doc(db, "events", ev.id), { ...ev, createdAt: N, updatedAt: N });
     console.log(`📅 Événement: ${ev.title}`);
+  }
+
+  // ─── Contacts ───────────────────────────────────────────────────────────
+  for (const c of INITIAL_CONTACTS) {
+    await setDoc(doc(db, "contacts", c.id), { ...c, createdAt: N, updatedAt: N, createdBy: "system" });
+    console.log(`📇 Contact: ${c.name} (${c.type})`);
   }
 
   // ─── Orders (assign to first employee if available) ─────────────────────

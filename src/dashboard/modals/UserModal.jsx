@@ -12,7 +12,7 @@ export function UserModal({ user, onSave, onDelete, onClose, currentUserId, show
     role:"user",
     color:"#FF6B35", pin:"",
     permissions: {
-      canManageUsers: false, canManageOrders: false, canManageEvents: false, canViewEvents: true,
+      canManageUsers: false, canManageOrders: false, canManageContacts: false, canManageEvents: false, canViewEvents: true,
       canManageExpenses: false, canManageDeliveries: false, canViewDeliveries: false, canManageReports: false,
       canClockIn: true, canViewTasks: true, canSubmitExpenses: true,
     }
@@ -46,31 +46,31 @@ export function UserModal({ user, onSave, onDelete, onClose, currentUserId, show
       setForm(f => ({ ...f, role:"admin", permissions: Object.fromEntries(Object.keys(PERMISSION_LABELS).map(k => [k, true])) }));
     } else if (tpl === "accountant") {
       setForm(f => ({ ...f, role:"user", permissions: {
-        canManageUsers:true, canManageOrders:false, canManageEvents:false, canViewEvents:true,
+        canManageUsers:true, canManageOrders:false, canManageContacts:true, canManageEvents:false, canViewEvents:true,
         canManageExpenses:true, canManageDeliveries:false, canViewDeliveries:false, canManageReports:true,
         canClockIn:true, canViewTasks:false, canSubmitExpenses:true,
       }}));
     } else if (tpl === "employee") {
       setForm(f => ({ ...f, role:"user", permissions: {
-        canManageUsers:false, canManageOrders:false, canManageEvents:false, canViewEvents:true,
+        canManageUsers:false, canManageOrders:false, canManageContacts:false, canManageEvents:false, canViewEvents:true,
         canManageExpenses:false, canManageDeliveries:false, canViewDeliveries:false, canManageReports:false,
         canClockIn:true, canViewTasks:true, canSubmitExpenses:true,
       }}));
     } else if (tpl === "driver") {
       setForm(f => ({ ...f, role:"user", permissions: {
-        canManageUsers:false, canManageOrders:false, canManageEvents:false, canViewEvents:true,
+        canManageUsers:false, canManageOrders:false, canManageContacts:false, canManageEvents:false, canViewEvents:true,
         canManageExpenses:false, canManageDeliveries:true, canViewDeliveries:true, canManageReports:false,
         canClockIn:true, canViewTasks:false, canSubmitExpenses:false,
       }}));
     } else if (tpl === "employee") {
       setForm(f => ({ ...f, role:"user", permissions: {
-        canManageUsers:false, canManageOrders:false, canManageEvents:false, canViewEvents:true,
+        canManageUsers:false, canManageOrders:false, canManageContacts:false, canManageEvents:false, canViewEvents:true,
         canManageExpenses:false, canManageDeliveries:false, canViewDeliveries:false, canManageReports:false,
         canClockIn:true, canViewTasks:true, canSubmitExpenses:true,
       }}));
     } else if (tpl === "driver") {
       setForm(f => ({ ...f, role:"user", permissions: {
-        canManageUsers:false, canManageOrders:false, canManageEvents:false, canViewEvents:true,
+        canManageUsers:false, canManageOrders:false, canManageContacts:false, canManageEvents:false, canViewEvents:true,
         canManageExpenses:false, canManageDeliveries:true, canViewDeliveries:true, canManageReports:false,
         canClockIn:true, canViewTasks:false, canSubmitExpenses:false,
       }}));

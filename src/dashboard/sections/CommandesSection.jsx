@@ -2,6 +2,7 @@
 import { getDL, daysUntil, fmtMs } from "../../utils/helpers";
 import { PageHeader } from "../../components/PageHeader";
 import { FilterBar } from "../../components/FilterBar";
+import { ExpandableSection } from "../../components/ExpandableSection";
 
 export function CommandesSection({ orders, employees, commandesSearch, setCommandesSearch, commandesStatus, setCommandesStatus, onOrderClick, onReassign, onNewOrder }) {
   const pendingCount = orders.filter(o => o.status === "pending").length;
@@ -133,43 +134,33 @@ export function CommandesSection({ orders, employees, commandesSearch, setComman
       {commandesStatus === "all" ? (
         <div>
           {(() => {
-            const pending = sortOrders(baseFiltered.filter(o => o.status === "pending"));
-            const inprogress = sortOrders(baseFiltered.filter(o => o.status === "inprogress"));
-            const done = sortOrders(baseFiltered.filter(o => o.status === "done"));
-            const unassigned = sortOrders(baseFiltered.filter(o => !o.assignedTo));
+            const done       = sortOrders(baseFiltered.filter(o => o.status === "done"));
+            const activeRaw  = sortOrders(baseFiltered.filter(o => o.status !== "done"));
+            const overdue    = activeRaw.filter(o => getDL(o.deadline).overdue);
+            const inprogress = activeRaw.filter(o => o.status === "inprogress" && !getDL(o.deadline).overdue);
+            const waiting    = activeRaw.filter(o => o.status === "pending" && !getDL(o.deadline).overdue);
+
             return (
               <>
-                {unassigned.length > 0 && (
-                  <div>
-                    <p className="sec" style={{ marginBottom:12 }}>
-                      Non assignées ({unassigned.length})
-                    </p>
-                    {unassigned.map(renderOrder)}
-                  </div>
-                )}
-                {pending.length > 0 && (
-                  <div>
-                    <p className="sec" style={{ marginBottom:12 }}>
-                      En attente ({pending.length})
-                    </p>
-                    {pending.map(renderOrder)}
-                  </div>
+                {overdue.length > 0 && (
+                  <ExpandableSection title="En retard" count={overdue.length} defaultExpanded={true} lazy={false}>
+                    {overdue.map(renderOrder)}
+                  </ExpandableSection>
                 )}
                 {inprogress.length > 0 && (
-                  <div>
-                    <p className="sec" style={{ marginBottom:12 }}>
-                      En cours ({inprogress.length})
-                    </p>
+                  <ExpandableSection title="En cours" count={inprogress.length} defaultExpanded={true} lazy={false}>
                     {inprogress.map(renderOrder)}
-                  </div>
+                  </ExpandableSection>
+                )}
+                {waiting.length > 0 && (
+                  <ExpandableSection title="En attente" count={waiting.length} defaultExpanded={true} lazy={false}>
+                    {waiting.map(renderOrder)}
+                  </ExpandableSection>
                 )}
                 {done.length > 0 && (
-                  <div>
-                    <p className="sec" style={{ marginBottom:12 }}>
-                      Terminées ({done.length})
-                    </p>
+                  <ExpandableSection title="Terminées" count={done.length} defaultExpanded={false} lazy={true}>
                     {done.map(renderOrder)}
-                  </div>
+                  </ExpandableSection>
                 )}
               </>
             );

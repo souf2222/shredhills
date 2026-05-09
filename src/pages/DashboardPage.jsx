@@ -1,6 +1,7 @@
 // src/pages/DashboardPage.jsx
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { useFirestore } from "../hooks/useFirestore";
 import { Sidebar } from "../components/Sidebar";
 import { Toast } from "../components/Toast";
 import { PhotoLightbox } from "../components/PhotoLightbox";
@@ -15,15 +16,16 @@ import { useRoute } from "../hooks/useRoute";
 
 import { DashboardStatStrip } from "../dashboard/sections/DashboardStatStrip";
 import { CommandesSection } from "../dashboard/sections/CommandesSection";
+import { ContactsSection } from "../dashboard/sections/ContactsSection";
 import { MaTachesSection } from "../dashboard/sections/MaTachesSection";
-import { EquipeSection } from "../dashboard/sections/EquipeSection";
-import { ExpensesSubmitView } from "../dashboard/sections/ExpensesSubmitView";
+import { EquipeSection } from "../dashboard/sections/EquipeSection";import { ExpensesSubmitView } from "../dashboard/sections/ExpensesSubmitView";
 import { ExpensesAdminView } from "../dashboard/sections/ExpensesAdminView";
 import { FeuillesTempsSection } from "../dashboard/sections/FeuillesTempsSection";
 import { PunchSection } from "../components/PunchSection";
 
 import { UserModal } from "../dashboard/modals/UserModal";
 import { OrderModal } from "../dashboard/modals/OrderModal";
+import { ContactModal } from "../dashboard/modals/ContactModal";
 import { NewStopModal } from "../dashboard/modals/NewStopModal";
 import { EditStopModal } from "../dashboard/modals/EditStopModal";
 import { NewExpenseModal } from "../dashboard/modals/NewExpenseModal";
@@ -32,16 +34,18 @@ import { DeleteExpenseModal } from "../dashboard/modals/DeleteExpenseModal";
 
 import { todayStr, toDateKey, DAY } from "../utils/helpers";
 
-export function DashboardPage({ db: fsData }) {
+export function DashboardPage() {
+  const fsData = useFirestore();
   const { userProfile, can } = useAuth();
   const {
-    users, orders, stops, punches, purchases, events, categories,
+    users, orders, stops, punches, purchases, events, categories, contacts,
     updateUser, deleteUser,
     addOrder, updateOrder, deleteOrder,
     addStop, updateStop, deleteStop,
     addExpense, updateExpense, approveExpense: fsApproveExpense, refuseExpense: fsRefuseExpense, deleteExpense,
     addCategory, updateCategory, deleteCategory,
     addEvent, updateEvent, deleteEvent,
+    addContact, updateContact, deleteContact,
     addPunchSession, closePunchSession, updatePunchSession,
   } = fsData;
 
@@ -50,15 +54,18 @@ export function DashboardPage({ db: fsData }) {
 
   // --- Modals & Forms ---
   const [userModal, setUserModal] = useState(null);
+  const [contactModal, setContactModal] = useState(null);
   const [orderModal, setOrderModal] = useState(null);
   const [newStopModal, setNewStopModal] = useState(false);
   const [editStopModal, setEditStopModal] = useState(null);
-  const [newStop, setNewStop] = useState({ type:"delivery", clientName:"", clientPhone:"", address:"", instructions:"", assignedTo:"", scheduledDate:null, order:0 });
+  const [newStop, setNewStop] = useState({ type:"delivery", contactId:null, clientName:"", clientPhone:"", address:"", instructions:"", assignedTo:"", scheduledDate:null, order:0 });
   const [tourneeDate, setTourneeDate] = useState(() => { const d = new Date(); d.setHours(12,0,0,0); return d; });
 
   // Filters & search
   const [commandesStatus, setCommandesStatus] = useState("all");
   const [commandesSearch, setCommandesSearch] = useState("");
+  const [contactsSearch, setContactsSearch] = useState("");
+  const [contactsType, setContactsType] = useState("all");
   const [equipeSearch, setEquipeSearch] = useState("");
   const [equipeRole, setEquipeRole] = useState("all");
   const [dateRange, setDateRange] = useState("week");
@@ -89,15 +96,16 @@ export function DashboardPage({ db: fsData }) {
   const tabs = [];
   const pushTab = (id, label) => tabs.push([id, label]);
 
-  if (can("canClockIn")) {
-        pushTab("pointage", "🕐 Ma feuille de temps");
-  }
+
   if (can("canManageEvents") || can("canViewEvents")) {
     const count = events.filter(e => e.endDate >= Date.now()).length;
     pushTab("evenements", `📅 Événements${count > 0 ? ` (${count})` : ""}`);
   }
   if (can("canManageOrders")) {
     pushTab("commandes", `📦 Commandes${adminActive.length > 0 ? ` (${adminActive.length})` : ""}`);
+  }
+  if (can("canManageContacts")) {
+    pushTab("annuaire", `📇 Annuaire${contacts.length > 0 ? ` (${contacts.length})` : ""}`);
   }
   if (can("canManageDeliveries")) {
     pushTab("gestion-tournees", "🚐 Gestion des tournées");
@@ -108,6 +116,9 @@ export function DashboardPage({ db: fsData }) {
   }
   if (can("canViewTasks") && !can("canManageOrders")) {
     pushTab("taches", `📋 Tâches${myOrders.filter(o => o.status !== "done").length > 0 ? ` (${myOrders.filter(o => o.status !== "done").length})` : ""}`);
+  }
+  if (can("canClockIn")) {
+        pushTab("pointage", "🕐 Ma feuille de temps");
   }
   if (can("canSubmitExpenses")) {
     pushTab("mes-depenses", "🧾 Mes dépenses");
@@ -141,6 +152,26 @@ export function DashboardPage({ db: fsData }) {
     catch(e) { showToast("Erreur: "+e.message); }
   };
 
+  const handleSaveContact = async (form) => {
+    try {
+      if (form.id) {
+        const { id, ...data } = form;
+        await updateContact(id, data);
+        showToast("Contact mis à jour !");
+      } else {
+        await addContact({ ...form, createdBy: userProfile?.id || null });
+        showToast("Contact créé !");
+      }
+      setContactModal(null);
+    } catch (e) { showToast("Erreur: " + e.message); }
+  };
+
+  const handleDeleteContact = async (id) => {
+    if (!window.confirm("Supprimer ce contact ?\n\n⚠️ Les commandes et livraisons liées conserveront son nom, mais ne seront plus liées à un contact.")) return;
+    try { await deleteContact(id); showToast("Contact supprimé"); setContactModal(null); }
+    catch(e) { showToast("Erreur: "+e.message); }
+  };
+
   const handleSaveOrder = async (form) => {
     try {
       if (form.id) {
@@ -151,6 +182,7 @@ export function DashboardPage({ db: fsData }) {
         await addOrder({
           clientName: form.clientName, clientEmail: form.clientEmail || "",
           description: form.description || "", assignedTo: form.assignedTo,
+          contactId: form.contactId || null,
           status: "pending", startTime: null, endTime: null, elapsed: 0,
           deadline: form.deadline || (Date.now() + 5 * DAY),
           createdBy: userProfile?.id || null,
@@ -180,7 +212,7 @@ export function DashboardPage({ db: fsData }) {
       ...newStop, status:"pending", completedAt:null, photoUrl:null, signatureUrl:null,
       note:"", orderId:null, scheduledDate: tourneeDate, order: maxOrder + 1
     });
-    setNewStop({ type:"delivery", clientName:"", clientPhone:"", address:"", instructions:"", assignedTo:"", scheduledDate:null, order:0 });
+    setNewStop({ type:"delivery", contactId:null, clientName:"", clientPhone:"", address:"", instructions:"", assignedTo:"", scheduledDate:null, order:0 });
     setNewStopModal(false);
     showToast("Arrêt ajouté !");
   };
@@ -314,7 +346,14 @@ export function DashboardPage({ db: fsData }) {
 
       <div className="app-shell-content">
         {/* Stat strip */}
-        <DashboardStatStrip events={events} orders={orders} stops={stops} users={users} punches={punches} userProfile={userProfile} />
+        {can("canClockIn") && (
+          <DashboardStatStrip
+            events={events} orders={orders} stops={stops} users={users} punches={punches} userProfile={userProfile}
+            addPunchSession={addPunchSession}
+            closePunchSession={closePunchSession}
+            showToast={showToast}
+          />
+        )}
 
         {/* ── CONTENT ── */}
         {tab === "evenements" && (
@@ -332,8 +371,18 @@ export function DashboardPage({ db: fsData }) {
           />
         )}
 
+        {tab === "annuaire" && can("canManageContacts") && (
+          <ContactsSection
+            contacts={contacts}
+            search={contactsSearch} setSearch={setContactsSearch}
+            typeFilter={contactsType} setTypeFilter={setContactsType}
+            onContactClick={(c) => setContactModal(c)}
+            onNewContact={() => setContactModal("new")}
+          />
+        )}
+
         {tab === "gestion-tournees" && can("canManageDeliveries") && (
-          <GestionRoutesSection stops={stops} drivers={drivers} addStop={addStop} updateStop={updateStop} deleteStop={deleteStop} showToast={showToast} />
+          <GestionRoutesSection stops={stops} drivers={drivers} contacts={contacts} addStop={addStop} updateStop={updateStop} deleteStop={deleteStop} showToast={showToast} />
         )}
         {tab === "mes-tournees" && can("canViewDeliveries") && (
           <MesRoutesSection stops={stops} updateStop={updateStop} userProfile={userProfile} showToast={showToast} />
@@ -386,8 +435,6 @@ export function DashboardPage({ db: fsData }) {
           <PunchSection
             userId={userProfile.id}
             punches={punches}
-            addPunchSession={addPunchSession}
-            closePunchSession={closePunchSession}
             updatePunchSession={updatePunchSession}
             showToast={showToast}
           />
@@ -403,18 +450,39 @@ export function DashboardPage({ db: fsData }) {
       )}
 
       {orderModal && (
-        <OrderModal order={orderModal === "new" ? null : orderModal} employees={employees} users={users}
+        <OrderModal order={orderModal === "new" ? null : orderModal} employees={employees} users={users} contacts={contacts}
           onSave={handleSaveOrder} onDelete={handleDeleteOrder} onClose={() => setOrderModal(null)} />
       )}
 
+      {contactModal && (
+        <ContactModal contact={contactModal === "new" ? null : contactModal} users={users}
+          onSave={handleSaveContact} onDelete={handleDeleteContact} onClose={() => setContactModal(null)} />
+      )}
+
       {newStopModal && (
-        <NewStopModal newStop={newStop} setNewStop={setNewStop} drivers={drivers}
+        <NewStopModal newStop={newStop} setNewStop={setNewStop} drivers={drivers} contacts={contacts}
           tourneeDate={tourneeDate} setTourneeDate={setTourneeDate}
           onAdd={handleAddStop} onClose={() => setNewStopModal(false)} />
       )}
 
       {editStopModal && (
-        <EditStopModal editStopModal={editStopModal} setEditStopModal={setEditStopModal} drivers={drivers}
+        <EditStopModal editStopModal={editStopModal} setEditStopModal={setEditStopModal} drivers={drivers} contacts={contacts}
+          onSave={handleEditStop} onClose={() => setEditStopModal(null)} />
+      )}
+
+      {contactModal && (
+        <ContactModal contact={contactModal === "new" ? null : contactModal} users={users}
+          onSave={handleSaveContact} onDelete={handleDeleteContact} onClose={() => setContactModal(null)} />
+      )}
+
+      {newStopModal && (
+        <NewStopModal newStop={newStop} setNewStop={setNewStop} drivers={drivers} contacts={contacts}
+          tourneeDate={tourneeDate} setTourneeDate={setTourneeDate}
+          onAdd={handleAddStop} onClose={() => setNewStopModal(false)} />
+      )}
+
+      {editStopModal && (
+        <EditStopModal editStopModal={editStopModal} setEditStopModal={setEditStopModal} drivers={drivers} contacts={contacts}
           onSave={handleEditStop} onClose={() => setEditStopModal(null)} />
       )}
 

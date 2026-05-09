@@ -9,7 +9,7 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [firebaseUser, setFirebaseUser] = useState(() => auth?.currentUser ?? null);
   const [userProfile,  setUserProfile]  = useState(null);
-  const [authLoading,  setAuthLoading]  = useState(false);
+  const [authLoading,  setAuthLoading]  = useState(true);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {

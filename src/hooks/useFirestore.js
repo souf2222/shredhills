@@ -34,11 +34,12 @@ export function useFirestore() {
   const [purchases,   setPurchases]   = useState([]);
   const [events,      setEvents]      = useState([]);
   const [categories,  setCategories]  = useState([]);
+  const [contacts,    setContacts]    = useState([]);
   const [loading,     setLoading]     = useState(true);
 
   useEffect(() => {
     let loaded = 0;
-    const TOTAL = 7;
+    const TOTAL = 8;
     const done = () => { loaded++; if (loaded >= TOTAL) setLoading(false); };
 
     const unsubs = [
@@ -72,6 +73,14 @@ export function useFirestore() {
         const list = snap.docs.map(d => ({ ...d.data(), id: d.id }));
         list.sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || (a.label || "").localeCompare(b.label || ""));
         setCategories(list); done();
+      }, () => done()),
+
+      onSnapshot(query(collection(db, "contacts"), orderBy("name", "asc")), snap => {
+        setContacts(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
+      }, () => done()),
+
+      onSnapshot(query(collection(db, "contacts"), orderBy("name", "asc")), snap => {
+        setContacts(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
       }, () => done()),
     ];
 
@@ -177,8 +186,13 @@ export function useFirestore() {
   const updateEvent = (id, data) => updateDoc(doc(db, "events", id), { ...data, updatedAt: serverTimestamp() });
   const deleteEvent = (id) => deleteDoc(doc(db, "events", id));
 
+  // CONTACTS
+  const addContact    = (contact) => addDoc(collection(db, "contacts"), { ...contact, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  const updateContact = (id, data) => updateDoc(doc(db, "contacts", id), { ...data, updatedAt: serverTimestamp() });
+  const deleteContact = (id) => deleteDoc(doc(db, "contacts", id));
+
   return {
-    users, orders, stops, punches, purchases, events, categories, loading,
+    users, orders, stops, punches, purchases, events, categories, contacts, loading,
     saveUser, updateUser, deleteUser,
     addOrder, updateOrder, deleteOrder,
     addStop, updateStop, deleteStop,
@@ -186,5 +200,6 @@ export function useFirestore() {
     addExpense, updateExpense, approveExpense, refuseExpense, deleteExpense,
     addCategory, updateCategory, deleteCategory,
     addEvent, updateEvent, deleteEvent,
+    addContact, updateContact, deleteContact,
   };
 }

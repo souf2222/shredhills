@@ -1,5 +1,22 @@
 // src/dashboard/modals/EditStopModal.jsx
-export function EditStopModal({ editStopModal, setEditStopModal, drivers, onSave, onDelete, onClose }) {
+import { ContactPicker } from "../../components/ContactPicker";
+import { formatAddress } from "../../utils/helpers";
+
+export function EditStopModal({ editStopModal, setEditStopModal, drivers, contacts, onSave, onDelete, onClose }) {
+  const handleContactChange = (contactData) => {
+    if (!contactData) {
+      setEditStopModal(n => ({ ...n, contactId: null, clientName: "", clientPhone: "", address: "" }));
+      return;
+    }
+    setEditStopModal(n => ({
+      ...n,
+      contactId: contactData.id || null,
+      clientName: contactData.name || "",
+      clientPhone: contactData.phone || "",
+      address: contactData.id ? formatAddress(contactData) : (contactData.address || ""),
+    }));
+  };
+
   return (
     <div className="overlay" onClick={e => e.target===e.currentTarget && onClose()}>
       <div className="sheet">
@@ -29,7 +46,19 @@ export function EditStopModal({ editStopModal, setEditStopModal, drivers, onSave
               onChange={e => setEditStopModal(n => ({...n, scheduledDate: e.target.value ? new Date(e.target.value + "T12:00:00") : null}))}
             />
           </div>
-          <div><label className="lbl">Client</label><input className="inp" placeholder="Sophie Tremblay" value={editStopModal.clientName} onChange={e => setEditStopModal(n => ({...n,clientName:e.target.value}))}/></div>
+
+          <ContactPicker
+            contacts={contacts}
+            value={editStopModal.contactId || null}
+            onChange={handleContactChange}
+            label="Client"
+            required
+            placeholder="Rechercher un contact de l'annuaire…"
+          />
+
+          {!editStopModal.contactId && (
+            <div><label className="lbl">Nom du client</label><input className="inp" placeholder="Sophie Tremblay" value={editStopModal.clientName} onChange={e => setEditStopModal(n => ({...n,clientName:e.target.value}))}/></div>
+          )}
           <div><label className="lbl">Téléphone</label><input className="inp" type="tel" placeholder="514-555-0101" value={editStopModal.clientPhone || ""} onChange={e => setEditStopModal(n => ({...n,clientPhone:e.target.value}))}/></div>
           <div><label className="lbl">Adresse</label><input className="inp" placeholder="1234 rue Ste-Catherine" value={editStopModal.address} onChange={e => setEditStopModal(n => ({...n,address:e.target.value}))}/></div>
           <div><label className="lbl">Instructions</label><input className="inp" placeholder="Sonner 2 fois…" value={editStopModal.instructions || ""} onChange={e => setEditStopModal(n => ({...n,instructions:e.target.value}))}/></div>

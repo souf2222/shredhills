@@ -109,10 +109,30 @@ export const getDateRange = (range, customStart, customEnd) => {
     const d = new Date(now); d.setDate(1); d.setHours(0,0,0,0);
     return { start: d.getTime(), end: now };
   }
+  if (range === "year") {
+    const d = new Date(now); d.setMonth(0, 1); d.setHours(0,0,0,0);
+    return { start: d.getTime(), end: now };
+  }
+  if (range === "year") {
+    const d = new Date(now); d.setMonth(0, 1); d.setHours(0,0,0,0);
+    return { start: d.getTime(), end: now };
+  }
   if (range === "custom" && customStart) {
     const s = new Date(customStart).getTime();
     const e = customEnd ? new Date(customEnd).getTime() + DAY - 1 : s + DAY - 1;
     return { start: s, end: e };
   }
   return { start: today - (dayOfWeek - 1) * DAY, end: now };
+};
+
+/** Format a structured address into a single line. */
+export const formatAddress = ({ street, city, province, postalCode, country }) => {
+  const parts = [street, city, province, postalCode, country].filter(Boolean);
+  return parts.join(", ");
+};
+
+/** Format a structured address into a short preview (street + city). */
+export const formatAddressShort = ({ street, city }) => {
+  const parts = [street, city].filter(Boolean);
+  return parts.join(", ") || "";
 };

@@ -1,6 +1,7 @@
 // src/App.jsx
+import { useEffect } from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { useFirestore } from "./hooks/useFirestore";
+import { useRoute } from "./hooks/useRoute";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { Logo } from "./components/Logo";
@@ -20,12 +21,22 @@ function LoadingScreen() {
 
 function AppRouter() {
   const { userProfile, authLoading } = useAuth();
-  const fsData = useFirestore();
+  const { section, replace } = useRoute();
+
+  // Redirect unauthenticated users to /login and authenticated users away from /login
+  useEffect(() => {
+    if (authLoading) return;
+    if (!userProfile && section !== "login") {
+      replace("login");
+    } else if (userProfile && section === "login") {
+      replace("");
+    }
+  }, [userProfile, authLoading, section, replace]);
 
   if (authLoading) return <LoadingScreen/>;
   if (!userProfile) return <LoginPage/>;
 
-  return <DashboardPage db={fsData}/>;
+  return <DashboardPage/>;
 }
 
 export default function App() {

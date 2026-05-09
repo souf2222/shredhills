@@ -1,5 +1,8 @@
 // src/dashboard/modals/NewStopModal.jsx
-export function NewStopModal({ newStop, setNewStop, drivers, tourneeDate, setTourneeDate, onAdd, onClose }) {
+import { ContactPicker } from "../../components/ContactPicker";
+import { formatAddress } from "../../utils/helpers";
+
+export function NewStopModal({ newStop, setNewStop, drivers, contacts, tourneeDate, setTourneeDate, onAdd, onClose }) {
   const hasTourneeDate = tourneeDate !== undefined && setTourneeDate !== undefined;
 
   const getDateStr = () => {
@@ -14,6 +17,20 @@ export function NewStopModal({ newStop, setNewStop, drivers, tourneeDate, setTou
     } else {
       setNewStop(n => ({ ...n, scheduledDate: val ? new Date(val + "T12:00:00") : null }));
     }
+  };
+
+  const handleContactChange = (contactData) => {
+    if (!contactData) {
+      setNewStop(n => ({ ...n, contactId: null, clientName: "", clientPhone: "", address: "" }));
+      return;
+    }
+    setNewStop(n => ({
+      ...n,
+      contactId: contactData.id || null,
+      clientName: contactData.name || "",
+      clientPhone: contactData.phone || "",
+      address: contactData.id ? formatAddress(contactData) : (contactData.address || ""),
+    }));
   };
 
   return (
@@ -42,7 +59,19 @@ export function NewStopModal({ newStop, setNewStop, drivers, tourneeDate, setTou
             <label className="lbl">Date</label>
             <input type="date" className="inp" value={getDateStr()} onChange={e => setDate(e.target.value)}/>
           </div>
-          <div><label className="lbl">Client <span style={{ color: "#FF3B30" }}>*</span></label><input className="inp" placeholder="Sophie Tremblay" value={newStop.clientName} onChange={e => setNewStop(n => ({...n,clientName:e.target.value}))}/></div>
+
+          <ContactPicker
+            contacts={contacts}
+            value={newStop.contactId || null}
+            onChange={handleContactChange}
+            label="Client"
+            required
+            placeholder="Rechercher un contact de l'annuaire…"
+          />
+
+          {!newStop.contactId && (
+            <div><label className="lbl">Nom du client <span style={{ color: "#FF3B30" }}>*</span></label><input className="inp" placeholder="Sophie Tremblay" value={newStop.clientName} onChange={e => setNewStop(n => ({...n,clientName:e.target.value}))}/></div>
+          )}
           <div><label className="lbl">Téléphone</label><input className="inp" type="tel" placeholder="514-555-0101" value={newStop.clientPhone} onChange={e => setNewStop(n => ({...n,clientPhone:e.target.value}))}/></div>
           <div><label className="lbl">Adresse <span style={{ color: "#FF3B30" }}>*</span></label><input className="inp" placeholder="1234 rue Ste-Catherine" value={newStop.address} onChange={e => setNewStop(n => ({...n,address:e.target.value}))}/></div>
           <div><label className="lbl">Instructions</label><input className="inp" placeholder="Sonner 2 fois…" value={newStop.instructions} onChange={e => setNewStop(n => ({...n,instructions:e.target.value}))}/></div>

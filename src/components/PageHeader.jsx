@@ -18,6 +18,7 @@ export function PageHeader({
   filters,
   children,
 }) {
+  const isStringTotal = typeof total === "string";
   const isFiltered =
     typeof filteredCount === "number" &&
     typeof total === "number" &&
@@ -25,6 +26,8 @@ export function PageHeader({
 
   const subtitle = isFiltered
     ? `${filteredCount} résultat${filteredCount > 1 ? "s" : ""} sur ${total}`
+    : isStringTotal
+    ? total
     : typeof total === "number"
     ? `${total} élément${total > 1 ? "s" : ""}`
     : null;

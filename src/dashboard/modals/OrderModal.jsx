@@ -2,19 +2,33 @@
 import { useState } from "react";
 import { getDL, fmtMs, DAY } from "../../utils/helpers";
 import { MetaTags } from "../../components/MetaTags";
+import { ContactPicker } from "../../components/ContactPicker";
 
-export function OrderModal({ order, employees, users, onSave, onDelete, onClose }) {
+export function OrderModal({ order, employees, users, contacts, onSave, onDelete, onClose }) {
   const isNew = !order?.id;
   const [form, setForm] = useState(() => order ? { ...order } : {
     clientName:"", clientEmail:"", description:"",
     assignedTo:"", status:"pending",
     deadline: Date.now() + 5 * DAY,
     startTime:null, endTime:null, elapsed:0,
+    contactId: null,
   });
   const [saving,   setSaving]   = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleContactChange = (contactData) => {
+    if (!contactData) {
+      set("contactId", null);
+      set("clientName", "");
+      set("clientEmail", "");
+      return;
+    }
+    set("contactId", contactData.id || null);
+    set("clientName", contactData.name || "");
+    set("clientEmail", contactData.email || "");
+  };
 
   const toDateInput = (ts) => {
     const d = new Date(ts || Date.now());
@@ -65,14 +79,28 @@ export function OrderModal({ order, employees, users, onSave, onDelete, onClose 
 
         <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
           <div>
-            <label className="lbl">Nom du client *</label>
-            <input className="inp" placeholder="Sophie Tremblay" value={form.clientName || ""} onChange={e => set("clientName", e.target.value)}/>
+            <ContactPicker
+              contacts={contacts}
+              value={form.contactId || null}
+              onChange={handleContactChange}
+              label="Client"
+              required
+              placeholder="Rechercher un contact de l'annuaire…"
+            />
           </div>
 
-          <div>
-            <label className="lbl">Courriel</label>
-            <input className="inp" type="email" placeholder="client@exemple.com" value={form.clientEmail || ""} onChange={e => set("clientEmail", e.target.value)}/>
-          </div>
+          {!form.contactId && (
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+              <div>
+                <label className="lbl">Nom du client *</label>
+                <input className="inp" placeholder="Sophie Tremblay" value={form.clientName || ""} onChange={e => set("clientName", e.target.value)}/>
+              </div>
+              <div>
+                <label className="lbl">Courriel</label>
+                <input className="inp" type="email" placeholder="client@exemple.com" value={form.clientEmail || ""} onChange={e => set("clientEmail", e.target.value)}/>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="lbl">Description</label>

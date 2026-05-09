@@ -4,6 +4,7 @@
 export const PERMISSION_LABELS = {
   canManageUsers:        "Gérer les utilisateurs",
   canManageOrders:       "Gérer les commandes",
+  canManageContacts:     "Gérer l'annuaire",
   canManageEvents:       "Gérer les événements",
   canManageDeliveries:   "Gérer les livraisons",
   canManageExpenses:     "Gérer les dépenses",
