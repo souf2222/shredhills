@@ -6,3 +6,9 @@ node_modules/
 .run/
 *.png
 .DS_Store
+build/
+refactor.py
+fix_pages.py
+patch-*.js
+test-*.md
+test_app.py

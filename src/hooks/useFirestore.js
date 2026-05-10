@@ -1,173 +1,205 @@
 // src/hooks/useFirestore.js
-// Hook central pour toutes les opérations Firestore + Storage
-
 import { useState, useEffect } from "react";
 import {
   collection, doc, onSnapshot, setDoc, updateDoc,
-  deleteDoc, addDoc, serverTimestamp, query, orderBy, getDoc, getDocs
+  deleteDoc, addDoc, serverTimestamp, query, orderBy
 } from "firebase/firestore";
-import { ref, uploadString, getDownloadURL } from "firebase/storage";
-import { db, storage } from "../firebase";
+import { db, uploadExpensePhoto, deleteStorageFile } from "../firebase";
 
-// ─── Upload image (base64 ou dataURL) vers Firebase Storage ──────────────────
-export async function uploadImage(path, dataUrl) {
-  if (!dataUrl || dataUrl === "demo" || dataUrl === "captured") return dataUrl;
-  try {
-    const storageRef = ref(storage, path);
-    await uploadString(storageRef, dataUrl, "data_url");
-    return await getDownloadURL(storageRef);
-  } catch (e) {
-    console.error("Upload error:", e);
-    return dataUrl;
-  }
+// Firestore Timestamps can come back as objects (with .toMillis() or .seconds).
+// We normalize them to plain numbers so every consumer can do arithmetic safely.
+function toMs(val) {
+  if (typeof val === "number") return val;
+  if (val && typeof val.toMillis === "function") return val.toMillis();
+  if (val && typeof val.seconds === "number") return val.seconds * 1000;
+  if (val instanceof Date) return val.getTime();
+  return val;
 }
 
-// ─── Hook principal ───────────────────────────────────────────────────────────
-export function useFirestore() {
-  const [users,     setUsers]     = useState([]);
-  const [orders,    setOrders]    = useState([]);
-  const [stops,     setStops]     = useState([]);
-  const [punches,   setPunches]   = useState({});
-  const [purchases, setPurchases] = useState([]);
-  const [loading,   setLoading]   = useState(true);
+function normalizeEvent(doc) {
+  const d = doc.data();
+  return {
+    ...d,
+    id: doc.id,
+    startDate: toMs(d.startDate),
+    endDate:   toMs(d.endDate),
+  };
+}
 
-  // ── Écoute temps-réel de toutes les collections ───────────────────────────
+export function useFirestore() {
+  const [users,       setUsers]       = useState([]);
+  const [orders,      setOrders]      = useState([]);
+  const [stops,       setStops]       = useState([]);
+  const [punches,     setPunches]     = useState({});
+  const [purchases,   setPurchases]   = useState([]);
+  const [events,      setEvents]      = useState([]);
+  const [categories,  setCategories]  = useState([]);
+  const [contacts,    setContacts]    = useState([]);
+  const [loading,     setLoading]     = useState(true);
+
   useEffect(() => {
     let loaded = 0;
-    const done = () => { loaded++; if (loaded >= 5) setLoading(false); };
+    const TOTAL = 8;
+    const done = () => { loaded++; if (loaded >= TOTAL) setLoading(false); };
 
-    const unsubUsers = onSnapshot(collection(db, "users"), snap => {
-      setUsers(snap.docs.map(d => ({ ...d.data(), id: d.id })));
-      done();
-    });
+    const unsubs = [
+      onSnapshot(collection(db, "users"), snap => {
+        setUsers(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
+      }, () => done()),
 
-    const unsubOrders = onSnapshot(
-      query(collection(db, "orders"), orderBy("createdAt", "desc")),
-      snap => { setOrders(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done(); }
-    );
+      onSnapshot(query(collection(db, "orders"), orderBy("createdAt", "desc")), snap => {
+        setOrders(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
+      }, () => done()),
 
-    const unsubStops = onSnapshot(
-      query(collection(db, "stops"), orderBy("createdAt", "desc")),
-      snap => { setStops(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done(); }
-    );
+      onSnapshot(query(collection(db, "stops"), orderBy("createdAt", "desc")), snap => {
+        setStops(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
+      }, () => done()),
 
-    const unsubPunches = onSnapshot(collection(db, "punches"), snap => {
-      const map = {};
-      snap.docs.forEach(d => { map[d.id] = d.data().sessions || []; });
-      setPunches(map);
-      done();
-    });
+      onSnapshot(collection(db, "punches"), snap => {
+        const map = {};
+        snap.docs.forEach(d => { map[d.id] = d.data().sessions || []; });
+        setPunches(map); done();
+      }, () => done()),
 
-    const unsubPurchases = onSnapshot(
-      query(collection(db, "purchases"), orderBy("submittedAt", "desc")),
-      snap => { setPurchases(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done(); }
-    );
+      onSnapshot(query(collection(db, "purchases"), orderBy("submittedAt", "desc")), snap => {
+        setPurchases(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
+      }, () => done()),
 
-    return () => { unsubUsers(); unsubOrders(); unsubStops(); unsubPunches(); unsubPurchases(); };
+      onSnapshot(query(collection(db, "events"), orderBy("startDate", "asc")), snap => {
+        setEvents(snap.docs.map(normalizeEvent)); done();
+      }, () => done()),
+
+      onSnapshot(collection(db, "purchaseCategories"), snap => {
+        const list = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+        list.sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || (a.label || "").localeCompare(b.label || ""));
+        setCategories(list); done();
+      }, () => done()),
+
+      onSnapshot(query(collection(db, "contacts"), orderBy("name", "asc")), snap => {
+        setContacts(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
+      }, () => done()),
+
+      onSnapshot(query(collection(db, "contacts"), orderBy("name", "asc")), snap => {
+        setContacts(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
+      }, () => done()),
+    ];
+
+    return () => unsubs.forEach(u => u());
   }, []);
 
-  // ── USERS ─────────────────────────────────────────────────────────────────
-  const saveUser = async (user) => {
-    await setDoc(doc(db, "users", user.id), user);
-  };
+  // USERS
+  const saveUser   = (user) => setDoc(doc(db, "users", user.id), user);
+  const updateUser = (user) => setDoc(doc(db, "users", user.id), user, { merge: true });
+  const deleteUser = (id)   => deleteDoc(doc(db, "users", id));
 
-  const updateUser = async (user) => {
-    await setDoc(doc(db, "users", user.id), user, { merge: true });
-  };
+  // ORDERS
+  const addOrder    = (order) => addDoc(collection(db, "orders"), { ...order, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  const updateOrder = (id, data) => updateDoc(doc(db, "orders", id), { ...data, updatedAt: serverTimestamp() });
+  const deleteOrder = (id) => deleteDoc(doc(db, "orders", id));
 
-  const deleteUser = async (id) => {
-    console.log("Firestore deleteUser called with:", id);
-    await deleteDoc(doc(db, "users", id));
-    console.log("Firestore deleteUser completed");
-  };
+  // STOPS
+  const addStop    = (stop) => addDoc(collection(db, "stops"), { ...stop, createdAt: serverTimestamp() });
+  const updateStop = (id, data) => updateDoc(doc(db, "stops", id), data);
+  const deleteStop = (id) => deleteDoc(doc(db, "stops", id));
 
-  // ── ORDERS ────────────────────────────────────────────────────────────────
-  const addOrder = async (order) => {
-    await addDoc(collection(db, "orders"), { ...order, createdAt: serverTimestamp() });
-  };
-
-  const updateOrder = async (id, data) => {
-    await updateDoc(doc(db, "orders", id), data);
-  };
-
-  const deleteOrder = async (id) => {
-    console.log("Firestore deleteOrder called with:", id);
-    const docRef = doc(db, "orders", id);
-    console.log("Doc ref path:", docRef.path);
-    
-    // First, let's see what orders actually exist
-    const snapshot = await getDoc(docRef);
-    console.log("Doc exists before delete:", snapshot.exists(), "doc id:", snapshot.id);
-    
-    // If not exists, let's log what we think the ID is vs what's in DB
-    if (!snapshot.exists()) {
-      console.log("Document with ID", id, "not found!");
-      // Try to fetch all orders to see what's there
-      const allSnap = await getDocs(query(collection(db, "orders"), orderBy("createdAt", "desc")));
-      console.log("All orders in DB:", allSnap.docs.map(d => d.id));
-    }
-    
-    await deleteDoc(docRef);
-    console.log("Firestore deleteDoc completed");
-  };
-
-  // ── STOPS ─────────────────────────────────────────────────────────────────
-  const addStop = async (stop) => {
-    await addDoc(collection(db, "stops"), { ...stop, createdAt: serverTimestamp() });
-  };
-
-  const updateStop = async (id, data) => {
-    await updateDoc(doc(db, "stops", id), data);
-  };
-
-  const deleteStop = async (id) => {
-    console.log("Firestore deleteStop called with:", id);
-    await deleteDoc(doc(db, "stops", id));
-    console.log("Firestore deleteStop completed");
-  };
-
-  // ── PUNCHES ───────────────────────────────────────────────────────────────
+  // PUNCHES
   const getPunchSessions = (empId) => punches[empId] || [];
 
   const addPunchSession = async (empId, session) => {
     const current = getPunchSessions(empId);
-    await setDoc(doc(db, "punches", empId), {
-      sessions: [...current, session]
-    }, { merge: true });
+    await setDoc(doc(db, "punches", empId), { sessions: [...current, session] }, { merge: true });
   };
 
   const updatePunchSession = async (empId, updatedSession) => {
     const current = getPunchSessions(empId);
-    const updated = current.map(s => s.id === updatedSession.id ? updatedSession : s);
-    await setDoc(doc(db, "punches", empId), { sessions: updated });
+    await setDoc(doc(db, "punches", empId), {
+      sessions: current.map(s => s.id === updatedSession.id ? updatedSession : s)
+    });
   };
 
   const closePunchSession = async (empId, sessionId) => {
     const current = getPunchSessions(empId);
-    const updated = current.map(s =>
-      s.id === sessionId ? { ...s, punchOut: Date.now() } : s
-    );
-    await setDoc(doc(db, "punches", empId), { sessions: updated });
-  };
-
-  // ── PURCHASES ─────────────────────────────────────────────────────────────
-  const addPurchase = async (purchase) => {
-    await addDoc(collection(db, "purchases"), {
-      ...purchase,
-      submittedAt: serverTimestamp()
+    await setDoc(doc(db, "punches", empId), {
+      sessions: current.map(s => s.id === sessionId ? { ...s, punchOut: Date.now() } : s)
     });
   };
 
-  const updatePurchase = async (id, data) => {
-    await updateDoc(doc(db, "purchases", id), data);
+  // EXPENSES (formerly PURCHASES)
+  // Creates an expense doc, then uploads the receipt photo if provided
+  // and patches the doc with { photoUrl, photoPath }. Returns the expense id.
+  const addExpense = async (p, photoFile = null) => {
+    const ref = await addDoc(collection(db, "purchases"), {
+      ...p,
+      submittedAt: serverTimestamp(),
+    });
+    if (photoFile) {
+      try {
+        const { url, path } = await uploadExpensePhoto(photoFile, ref.id);
+        await updateDoc(ref, { photoUrl: url, photoPath: path });
+      } catch (err) {
+        console.error("Upload facture échoué :", err);
+        throw err;
+      }
+    }
+    return ref.id;
   };
 
+  const updateExpense = (id, data) => updateDoc(doc(db, "purchases", id), data);
+
+  const approveExpense = (id, decidedBy, decidedByName) =>
+    updateDoc(doc(db, "purchases", id), {
+      status: "approved",
+      approvedAt: Date.now(),
+      decidedBy: decidedBy || null,
+      decidedByName: decidedByName || null,
+    });
+
+  const refuseExpense = (id, reason, decidedBy, decidedByName) =>
+    updateDoc(doc(db, "purchases", id), {
+      status: "refused",
+      refusedAt: Date.now(),
+      refusedReason: reason || "",
+      decidedBy: decidedBy || null,
+      decidedByName: decidedByName || null,
+    });
+
+  const deleteExpense = async (id, photoPath = null) => {
+    await deleteStorageFile(photoPath);
+    await deleteDoc(doc(db, "purchases", id));
+  };
+
+  // EXPENSE CATEGORIES (editable CRUD)
+  const addCategory = (cat) => addDoc(collection(db, "purchaseCategories"), {
+    label: cat.label || "",
+    emoji: cat.emoji || "📎",
+    color: cat.color || "#8E8E93",
+    order: typeof cat.order === "number" ? cat.order : 999,
+    createdAt: serverTimestamp(),
+  });
+  const updateCategory = (id, data) => updateDoc(doc(db, "purchaseCategories", id), data);
+  const deleteCategory = (id) => deleteDoc(doc(db, "purchaseCategories", id));
+
+  // EVENTS
+  const addEvent = (event) => addDoc(collection(db, "events"), {
+    ...event, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+  });
+  const updateEvent = (id, data) => updateDoc(doc(db, "events", id), { ...data, updatedAt: serverTimestamp() });
+  const deleteEvent = (id) => deleteDoc(doc(db, "events", id));
+
+  // CONTACTS
+  const addContact    = (contact) => addDoc(collection(db, "contacts"), { ...contact, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  const updateContact = (id, data) => updateDoc(doc(db, "contacts", id), { ...data, updatedAt: serverTimestamp() });
+  const deleteContact = (id) => deleteDoc(doc(db, "contacts", id));
+
   return {
-    users, setUsers, orders, setOrders, stops, setStops, punches, setPunches, purchases, setPurchases, loading,
+    users, orders, stops, punches, purchases, events, categories, contacts, loading,
     saveUser, updateUser, deleteUser,
     addOrder, updateOrder, deleteOrder,
     addStop, updateStop, deleteStop,
     getPunchSessions, addPunchSession, updatePunchSession, closePunchSession,
-    addPurchase, updatePurchase,
+    addExpense, updateExpense, approveExpense, refuseExpense, deleteExpense,
+    addCategory, updateCategory, deleteCategory,
+    addEvent, updateEvent, deleteEvent,
+    addContact, updateContact, deleteContact,
   };
 }

@@ -1,225 +1,265 @@
 # 🏷️ Shredhills — Plateforme de gestion
 
-Application web complète pour Shredhills Impression de vêtements.
+Application web de gestion interne pour Shredhills Impression de vêtements :
+commandes, tâches, événements, livraisons, pointage, dépenses.
+
+Stack : **React 18** + **Firebase** (Auth Email/Password, Firestore, Storage).
 
 ---
 
-## 🚀 DÉMARRAGE RAPIDE (5 étapes)
+## 🚀 Démarrage rapide
 
 ### Prérequis
-- Node.js 18+ installé → https://nodejs.org
-- Un compte Firebase gratuit → https://firebase.google.com
+- Node.js **18+** → https://nodejs.org
+- Un projet **Firebase** (gratuit) → https://console.firebase.google.com
 
----
-
-### ÉTAPE 1 — Installer les dépendances
-
+### 1. Installer les dépendances
 ```bash
-cd shredhills
 npm install
 ```
 
-### ÉTAPE 2 — Tester en local (sans Firebase)
+### 2. Configurer Firebase
 
+Créer un projet sur la [Firebase Console](https://console.firebase.google.com), puis :
+
+1. **Authentication** → activer le provider **Email/Password**
+2. **Firestore Database** → créer en mode production (région `us-east1` pour Montréal)
+3. **Storage** → activer (photos de preuves de livraison, signatures, factures)
+4. **Project Settings** → **Your apps** → enregistrer une **Web app** et copier la config
+
+Coller les valeurs dans un fichier `.env` à la racine (voir `.env.example`) :
+
+```env
+REACT_APP_FIREBASE_API_KEY=AIzaSy...
+REACT_APP_FIREBASE_AUTH_DOMAIN=ton-projet.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=ton-projet
+REACT_APP_FIREBASE_STORAGE_BUCKET=ton-projet.firebasestorage.app
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=123456789
+REACT_APP_FIREBASE_APP_ID=1:123456789:web:abcdef
+```
+
+> ℹ️ Des valeurs de fallback pointant vers le projet `shredhills-dev` sont câblées
+> dans `src/firebase.js` pour faciliter les tests, mais en production **utilise toujours `.env`**.
+
+Déployer ensuite les règles de sécurité (contenu des fichiers à la racine) :
+- `firestore.rules` → **Firestore → Rules**
+- `storage.rules`   → **Storage → Rules**
+
+### 3. Initialiser les comptes de démo (une seule fois)
+
+Lancer l'app en local :
 ```bash
 npm start
 ```
-L'app s'ouvre sur http://localhost:3000
-Les données sont en mémoire (se réinitialisent au refresh).
+→ ouvre http://localhost:3000
 
-**Codes de connexion par défaut :**
-| Profil       | Code        | NIP  |
-|--------------|-------------|------|
-| Propriétaire | ADMIN-000   | 1234 |
-| Comptable    | COMPTA-000  | 5678 |
-| Alexandre    | EMP-001     | 0001 |
-| Marika       | EMP-002     | 0002 |
-| Jordan       | EMP-003     | 0003 |
-| Kevin (Livreur) | LIV-001  | 9999 |
-
----
-
-### ÉTAPE 3 — Configurer Firebase (données permanentes)
-
-1. Va sur https://console.firebase.google.com
-2. **Créer un projet** → nomme-le `shredhills`
-3. Dans le projet :
-   - Clique l'icône **`</>`** (Web app) → enregistre une app web
-   - Copie les valeurs de `firebaseConfig`
-4. Ouvre **`src/firebase.js`** et remplace les valeurs :
-   ```js
-   const firebaseConfig = {
-     apiKey: "COLLE-ICI",
-     authDomain: "ton-projet.firebaseapp.com",
-     projectId: "ton-projet",
-     storageBucket: "ton-projet.appspot.com",
-     messagingSenderId: "123456789",
-     appId: "1:123456789:web:abcdef"
-   };
-   ```
-5. Dans Firebase Console :
-   - **Firestore Database** → Créer → Mode production → Choisir une région (us-east1 pour Montréal)
-   - **Storage** → Activer (pour photos et signatures)
-   - **Firestore → Règles** → Colle le contenu de `firestore.rules`
-   - **Storage → Règles** → Colle le contenu de `storage.rules`
-
-6. Dans **`src/index.js`**, change :
-   ```js
-   // Avant :
-   import App from "./App";
-   // Après :
-   import App from "./AppWithFirebase";
-   ```
-
-7. Relance l'app : `npm start`
-
----
-
-### ÉTAPE 4 — Mettre en ligne (accessible de partout)
-
-#### Option A — Vercel (recommandé, gratuit)
-
-```bash
-npm install -g vercel
-npm run build
-vercel --prod
+Dans la console du navigateur (F12) :
+```js
+window.seedDatabase()
 ```
-→ Tu obtiendras une URL comme `https://shredhills.vercel.app`
 
-#### Option B — Firebase Hosting (tout-en-un)
+Cela crée les comptes Firebase Auth et les profils Firestore initiaux,
+ainsi que quelques événements et commandes d'exemple.
 
-```bash
-npm install -g firebase-tools
-firebase login
-firebase init hosting
-# Répond : build, yes, no
-npm run build
-firebase deploy
-```
-→ URL : `https://ton-projet.web.app`
+### 4. Comptes par défaut
 
----
+| Rôle              | Email                       | Mot de passe |
+|-------------------|-----------------------------|--------------|
+| Propriétaire      | `admin@shredhills.com`      | `admin123`   |
+| Comptable         | `compta@shredhills.com`     | `compta123`  |
+| Employé (Alex)    | `alexandre@shredhills.com`  | `emp1234`    |
+| Employé (Marika)  | `marika@shredhills.com`     | `emp1234`    |
+| Employé (Jordan)  | `jordan@shredhills.com`     | `emp1234`    |
+| Livreur (Kevin)   | `kevin@shredhills.com`      | `driver123`  |
 
-### ÉTAPE 5 — Connecter EmailJS (courriels aux clients)
-
-1. Va sur https://www.emailjs.com → créer un compte gratuit
-2. **Email Services** → Add Service → Gmail → connecte ton compte Google
-3. **Email Templates** → Create Template :
-   ```
-   Sujet : ✅ Votre commande {{order_id}} est prête — Shredhills
-   
-   Bonjour {{client_name}},
-   
-   Votre commande {{description}} est complétée et prête à être ramassée.
-   
-   N° commande : {{order_id}}
-   Temps de production : {{production_time}}
-   
-   Merci de faire confiance à Shredhills !
-   ```
-4. Dans `src/AppWithFirebase.jsx`, trouve la fonction `sendEmailSimulated` et remplace par :
-   ```js
-   import emailjs from '@emailjs/browser';
-   
-   async function sendEmail(order) {
-     await emailjs.send(
-       'service_XXXXX',    // ton Service ID
-       'template_XXXXX',   // ton Template ID
-       {
-         client_name: order.clientName,
-         order_id: order.id,
-         description: order.description,
-         production_time: fmtMs(order.elapsed),
-       },
-       'ta_PUBLIC_KEY'     // ta Public Key
-     );
-   }
-   ```
-5. Installe emailjs : `npm install @emailjs/browser`
+> ⚠️ **Change tous les mots de passe** avant la mise en production.
 
 ---
 
-## 📱 ACCÈS SUR TÉLÉPHONE
+## 🔑 Modèle de droits
 
-Une fois déployée sur Vercel/Firebase :
-- Partage l'URL à tous tes employés
-- L'app fonctionne comme une app native sur iPhone/Android
-- Ajoute-la à l'écran d'accueil : Safari → Partager → "Sur l'écran d'accueil"
+L'app combine trois axes :
+
+- **`role`** : `admin` (super-utilisateur) ou `user`.
+- **`jobs`** : un ou plusieurs métiers — `admin`, `accountant`, `employee`, `driver`.
+  Détermine quelle interface est affichée.
+- **`permissions`** : flags fins (`canManageOrders`, `canManageEvents`, `canViewReports`, `canViewTasks`, `canClockIn`, `canSubmitExpenses`, …).
+  Un `admin` les a toutes implicitement.
+
+Le routage est unifié dans `src/App.jsx` :
+- Quel que soit le rôle, tout le monde arrive sur **DashboardPage**
+- Seuls les onglets et les actions correspondant aux permissions de l'utilisateur s'affichent
+- `can()` décide dynamiquement : pas de page séparée admin / employé / livreur
 
 ---
 
-## 🔑 FONCTIONNALITÉS
+## 🧩 Fonctionnalités
 
-### ⚙️ Admin (ADMIN-000)
-- Créer/assigner/supprimer des commandes avec deadline
-- Gérer la tournée des livreurs
-- Voir toutes les commandes actives et terminées
-- Gérer l'équipe : modifier noms, NIP, couleurs
-- Ajouter employés et livreurs
+### ⚙️ Admin / gestion
+- CRUD des commandes (assignation, deadline, statut, chronométrage)
+- Gestion des événements (calendrier d'équipe)
+- Gestion des utilisateurs : rôles, jobs, permissions, NIP, couleur
+- Tournée des livreurs
+- Vue feuilles de temps
 
-### 📊 Comptable (COMPTA-000)
-- Feuilles de temps de tous les employés et livreurs
-- Approuver/refuser les demandes d'achats avec factures
-- Voir les heures par journée avec sessions cumulées
+### 📊 Comptable
+- Feuilles de temps de l'équipe (sessions cumulées par journée)
+- Approuver / refuser les demandes de dépenses avec factures jointes
+- Soumettre ses propres dépenses et pointer
 
-### 👷 Employés (EMP-XXX)
-- Punch in / Punch out (heures cumulées par journée)
-- Voir et exécuter ses tâches avec chronomètre
-- Soumettre des demandes d'achats avec photo de facture
-- Modifier ses propres pointages (avec note obligatoire)
+### 👷 Employé
+- Punch in / Punch out
+- Liste des tâches assignées avec chronomètre
+- Soumettre des achats (photo de facture)
+- Modifier ses propres pointages avec note obligatoire
 
-### 🚐 Livreurs (LIV-XXX)
-- Voir sa tournée du jour (livraisons + ramassages)
-- Confirmer chaque arrêt avec :
-  - 📸 Photo de preuve (caméra du téléphone)
-  - ✍️ Signature du client (doigt sur écran)
-- Ajouter ses propres arrêts
+### 🚐 Livreur
+- Tournée du jour (livraisons + ramassages)
+- Confirmation d'arrêt avec :
+  - 📸 Photo (caméra)
+  - ✍️ Signature client (canvas tactile)
+- Ajout d'arrêts ad‑hoc
 - Punch in / Punch out
 
+### 📅 Événements
+Calendrier partagé avec assignations utilisateurs (voir `src/pages/EventsPage.jsx`).
+
 ---
 
-## 📁 STRUCTURE DU PROJET
+## 📁 Structure du projet
 
 ```
 shredhills/
 ├── public/
 │   └── index.html
 ├── src/
-│   ├── App.jsx              ← Version locale (démo, pas de Firebase)
-│   ├── AppWithFirebase.jsx  ← Version production (Firebase)
-│   ├── firebase.js          ← Configuration Firebase ⚠️ À REMPLIR
-│   ├── seed.js              ← Données initiales
-│   ├── index.js             ← Point d'entrée
-│   └── hooks/
-│       └── useFirestore.js  ← Toutes les opérations base de données
-├── firestore.rules          ← Règles de sécurité Firestore
-├── storage.rules            ← Règles Firebase Storage
+│   ├── App.jsx                  ← Routeur racine (Auth → DashboardPage)
+│   ├── index.js                 ← Point d'entrée React
+│   ├── firebase.js              ← Init Firebase (Auth, Firestore, Storage)
+│   ├── seed.js                  ← window.seedDatabase() — comptes/données initiales
+│   ├── contexts/
+│   │   └── AuthContext.jsx      ← État auth + helpers can() / isAdmin() / hasJob()
+│   ├── hooks/
+│   │   └── useFirestore.js      ← Toutes les opérations CRUD Firestore
+│   ├── pages/
+│   │   ├── LoginPage.jsx
+│   │   ├── DashboardPage.jsx    ← Page unique, onglets selon permissions
+│   │   ├── EventsPage.jsx
+│   │   ├── GestionRoutesSection.jsx
+│   │   ├── MesRoutesSection.jsx
+│   │   └── SettingsPage.jsx
+│   ├── dashboard/               ← Sections & modals extraits du monolithe
+│   │   ├── constants.js         ← PERMISSION_LABELS, JOB_OPTIONS, COLORS
+│   │   ├── modals/
+│   │   │   ├── UserModal.jsx
+│   │   │   ├── OrderModal.jsx
+│   │   │   ├── NewStopModal.jsx
+│   │   │   ├── EditStopModal.jsx
+│   │   │   ├── NewExpenseModal.jsx
+│   │   │   ├── RefuseExpenseModal.jsx
+│   │   │   └── DeleteExpenseModal.jsx
+│   │   └── sections/
+│   │       ├── DashboardStatStrip.jsx
+│   │       ├── CommandesSection.jsx
+│   │       ├── MaTachesSection.jsx
+│   │       ├── EquipeSection.jsx
+│   │       ├── TourneesSection.jsx
+│   │       ├── ExpensesSubmitView.jsx
+│   │       ├── ExpensesAdminView.jsx
+│   │       ├── FeuillesTempsSection.jsx
+│   │       └── PointageSection.jsx
+│   ├── components/              ← Logo, Nav, PunchSection, SignatureCanvas, Toast
+│   ├── utils/helpers.js
+│   └── styles/globals.css
+├── firestore.rules              ← Règles Firestore
+├── storage.rules                ← Règles Firebase Storage
+├── .env.example                 ← Modèle de variables d'environnement
+├── Dockerfile / docker-compose.yml / nginx.conf
+├── UNRAID.md                    ← Guide de déploiement UnRAID
 ├── package.json
-└── README.md                ← Ce fichier
+└── README.md
 ```
 
 ---
 
-## ❓ PROBLÈMES FRÉQUENTS
+## 🛠️ Scripts npm
 
-**L'app ne se lance pas**
-→ Vérifie que Node.js est installé : `node --version`
-→ Relance `npm install`
-
-**Firebase : "permission denied"**
-→ Vérifie que tu as copié les règles dans Firestore et Storage
-
-**Les données disparaissent au refresh**
-→ Tu utilises encore `App.jsx` (version locale). Passe à `AppWithFirebase.jsx` dans `index.js`
-
-**Photo ne fonctionne pas sur iPhone**
-→ Assure-toi que l'app est en HTTPS (Vercel/Firebase le fait automatiquement)
+| Commande         | Description                              |
+|------------------|------------------------------------------|
+| `npm start`      | Lance l'app en dev sur http://localhost:3000 |
+| `npm run build`  | Build de production dans `build/`        |
+| `npm test`       | Lance les tests (CRA / react-scripts)    |
 
 ---
 
-## 📞 SUPPORT
+## 🚢 Déploiement
 
-Pour toute question sur le déploiement, consulte :
+### Option A — Firebase Hosting
+
+```bash
+npm install -g firebase-tools
+firebase login
+firebase init hosting    # dossier public : build, SPA : yes
+npm run build
+firebase deploy
+```
+URL : `https://<projet>.web.app`
+
+### Option B — Vercel
+
+```bash
+npm install -g vercel
+npm run build
+vercel --prod
+```
+Déclarer les variables `REACT_APP_FIREBASE_*` dans **Project Settings → Environment Variables**.
+
+### Option C — Docker / UnRAID
+
+`Dockerfile` + `docker-compose.yml` sont fournis :
+
+```bash
+cp .env.example .env       # remplir les variables
+docker compose up -d
+```
+
+Pour un déploiement détaillé sur **UnRAID**, voir [`UNRAID.md`](./UNRAID.md).
+
+---
+
+## 📱 Accès mobile
+
+Une fois en HTTPS (Firebase Hosting / Vercel), l'app s'installe en PWA :
+- **iOS** : Safari → Partager → *Sur l'écran d'accueil*
+- **Android** : Chrome → menu → *Installer l'application*
+
+La caméra et la signature tactile nécessitent **HTTPS**.
+
+---
+
+## ❓ Problèmes fréquents
+
+**`auth/invalid-credential` au login**
+→ Le compte n'existe pas. Lance `window.seedDatabase()` une fois, ou crée le compte
+   manuellement dans Firebase Console → Authentication.
+
+**`Missing or insufficient permissions` (Firestore)**
+→ Les règles `firestore.rules` n'ont pas été déployées, ou l'utilisateur n'est pas connecté.
+
+**Les images / signatures ne s'uploadent pas**
+→ Vérifier que **Storage** est activé et que `storage.rules` est déployé.
+
+**L'app affiche le projet `shredhills-dev`**
+→ Le fichier `.env` n'est pas chargé. Vérifier qu'il est à la racine et **redémarrer** `npm start`
+   (les variables `REACT_APP_*` ne sont lues qu'au démarrage).
+
+**Caméra non fonctionnelle sur iPhone**
+→ L'app doit être servie en **HTTPS** (Vercel / Firebase Hosting le font automatiquement).
+
+---
+
+## 📞 Ressources
+
 - Firebase : https://firebase.google.com/docs
-- Vercel : https://vercel.com/docs
-- EmailJS : https://www.emailjs.com/docs
+- Vercel   : https://vercel.com/docs
+- React    : https://react.dev

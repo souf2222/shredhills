@@ -1,11 +1,30 @@
 // storage.rules
-// Colle ces règles dans Firebase Console → Storage → Règles
+// Paste these rules into Firebase Console → Storage → Rules
+//
+// Policy : only authenticated users can read or write files in the bucket.
+// The only path currently used by the app is :
+//   - purchases/{purchaseId}/{timestamp}.{ext}   → receipt attached to a
+//     purchase request (image or PDF, capped at 10 MB).
+// Everything else is denied by default so the bucket can't be used as a
+// free public file host.
 
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+
+    // Purchase receipts. Accept images and PDFs up to 10 MB.
+    match /purchases/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.resource.size < 10 * 1024 * 1024
+                   && (request.resource.contentType.matches('image/.*')
+                       || request.resource.contentType == 'application/pdf');
+      allow delete: if request.auth != null;
+    }
+
+    // Deny-by-default for any other path.
     match /{allPaths=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }
