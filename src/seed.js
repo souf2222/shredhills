@@ -11,21 +11,21 @@ const N = Date.now();
 
 const DEFAULT_PERMISSIONS = {
   canManageUsers: false, canManageOrders: false, canManageContacts: false, canManageEvents: false, canViewEvents: false,
-  canManageExpenses: false, canManageDeliveries: false, canManageReports: false,
-  canClockIn: false, canViewTasks: false, canSubmitExpenses: false
+  canManageExpenses: false, canManageAcquisitions: false, canManageDeliveries: false, canManageReports: false,
+  canClockIn: false, canViewTasks: false, canSubmitExpenses: false, canSubmitAcquisitions: false,
 };
 
 const ADMIN_PERMISSIONS = Object.fromEntries(Object.keys(DEFAULT_PERMISSIONS).map(k => [k, true]));
 
 const ACCOUNTANT_PERMISSIONS = {
   ...DEFAULT_PERMISSIONS,
-  canManageUsers: true, canManageExpenses: true, canManageContacts: true, canViewEvents: true,
-  canManageReports: true, canClockIn: true, canSubmitExpenses: true,
+  canManageUsers: true, canManageExpenses: true, canManageAcquisitions: true, canManageContacts: true, canViewEvents: true,
+  canManageReports: true, canClockIn: true, canSubmitExpenses: true, canSubmitAcquisitions: true,
 };
 
 const EMPLOYEE_PERMISSIONS = {
   ...DEFAULT_PERMISSIONS,
-  canClockIn: true, canViewTasks: true, canSubmitExpenses: true, canViewEvents: true,
+  canClockIn: true, canViewTasks: true, canSubmitExpenses: true, canSubmitAcquisitions: true, canViewEvents: true,
 };
 
 const DRIVER_PERMISSIONS = {

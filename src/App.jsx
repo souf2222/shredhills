@@ -7,6 +7,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { Logo } from "./components/Logo";
 import "./styles/globals.css";
 import "./seed"; // exposes window.seedDatabase()
+import "./migratePermissions"; // exposes window.migratePermissions()
 
 function LoadingScreen() {
   return (

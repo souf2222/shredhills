@@ -1,10 +1,10 @@
 // src/dashboard/sections/CommandesSection.jsx
-import { getDL, daysUntil, fmtMs } from "../../utils/helpers";
+import { getDL, daysUntil, fmtMs, dayStart, DAY } from "../../utils/helpers";
 import { PageHeader } from "../../components/PageHeader";
 import { FilterBar } from "../../components/FilterBar";
 import { ExpandableSection } from "../../components/ExpandableSection";
 
-export function CommandesSection({ orders, employees, commandesSearch, setCommandesSearch, commandesStatus, setCommandesStatus, onOrderClick, onReassign, onNewOrder }) {
+export function CommandesSection({ orders, employees, commandesSearch, setCommandesSearch, commandesStatus, setCommandesStatus, commandesDateRange, setCommandesDateRange, commandesDateStart, setCommandesDateStart, commandesDateEnd, setCommandesDateEnd, onOrderClick, onReassign, onNewOrder }) {
   const pendingCount = orders.filter(o => o.status === "pending").length;
   const inprogressCount = orders.filter(o => o.status === "inprogress").length;
   const doneCount = orders.filter(o => o.status === "done").length;
@@ -15,14 +15,40 @@ export function CommandesSection({ orders, employees, commandesSearch, setComman
     [o.clientName, o.clientEmail, o.description].join(" ").toLowerCase().includes(commandesSearch.trim().toLowerCase())
   );
 
+  // Date filter (based on deadline)
+  const dateFiltered = baseFiltered.filter(o => {
+    if (commandesDateRange === "all" || !o.deadline) return true;
+    const dl = o.deadline;
+    const today = dayStart(Date.now());
+    if (commandesDateRange === "today") return dayStart(dl) === today;
+    if (commandesDateRange === "week") {
+      const dayOfWeek = new Date().getDay() || 7;
+      const weekStart = today - (dayOfWeek - 1) * DAY;
+      const weekEnd = weekStart + 7 * DAY;
+      return dl >= weekStart && dl < weekEnd;
+    }
+    if (commandesDateRange === "month") {
+      const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0);
+      const monthStart = d.getTime();
+      const nextMonth = new Date(monthStart); nextMonth.setMonth(nextMonth.getMonth() + 1);
+      return dl >= monthStart && dl < nextMonth.getTime();
+    }
+    if (commandesDateRange === "custom" && commandesDateStart && commandesDateEnd) {
+      const s = new Date(commandesDateStart).getTime();
+      const e = new Date(commandesDateEnd).getTime() + DAY - 1;
+      return dl >= s && dl <= e;
+    }
+    return true;
+  });
+
   const statusFiltered = (() => {
-    if (commandesStatus === "all") return baseFiltered;
-    if (commandesStatus === "pending") return baseFiltered.filter(o => o.status === "pending");
-    if (commandesStatus === "inprogress") return baseFiltered.filter(o => o.status === "inprogress");
-    if (commandesStatus === "done") return baseFiltered.filter(o => o.status === "done");
-    if (commandesStatus === "unassigned") return baseFiltered.filter(o => !o.assignedTo);
-    if (commandesStatus === "overdue") return baseFiltered.filter(o => o.status !== "done" && o.deadline <= Date.now());
-    return baseFiltered;
+    if (commandesStatus === "all") return dateFiltered;
+    if (commandesStatus === "pending") return dateFiltered.filter(o => o.status === "pending");
+    if (commandesStatus === "inprogress") return dateFiltered.filter(o => o.status === "inprogress");
+    if (commandesStatus === "done") return dateFiltered.filter(o => o.status === "done");
+    if (commandesStatus === "unassigned") return dateFiltered.filter(o => !o.assignedTo);
+    if (commandesStatus === "overdue") return dateFiltered.filter(o => o.status !== "done" && o.deadline <= Date.now());
+    return dateFiltered;
   })();
 
   const sortOrders = (list) => [...list].sort((a,b) => {
@@ -111,17 +137,35 @@ export function CommandesSection({ orders, employees, commandesSearch, setComman
         search={{ value: commandesSearch, onChange: setCommandesSearch, placeholder: "Rechercher..." }}
         button={{ text: "+ Commande", onClick: onNewOrder }}
         filters={[
-          <FilterBar key="fb-c" hasFilters={commandesStatus !== "all" || commandesSearch.trim()} onReset={() => { setCommandesStatus("all"); setCommandesSearch(""); }} filters={[
-            { key: "status", type: "toggle-group", value: commandesStatus, onChange: setCommandesStatus, options: [
-              { value: "all", label: `Toutes (${orders.length})`, color: "#6D6D72" },
-              { value: "pending", label: `En attente (${pendingCount})`, color: "#FF9500" },
-              { value: "inprogress", label: `En cours (${inprogressCount})`, color: "#007AFF" },
-              { value: "done", label: `Terminées (${doneCount})`, color: "#34C759" },
-              { value: "unassigned", label: `Non assignées (${unassignedCount})`, color: "#AF52DE" },
-              { value: "overdue", label: `En retard (${overdueCount})`, color: "#FF3B30" }
+          <FilterBar
+            key="fb-c"
+            hasFilters={commandesStatus !== "all" || commandesSearch.trim() || commandesDateRange !== "all"}
+            onReset={() => { setCommandesStatus("all"); setCommandesSearch(""); setCommandesDateRange("all"); setCommandesDateStart(""); setCommandesDateEnd(""); }}
+            filters={[
+              { key: "status", type: "select", value: commandesStatus, onChange: setCommandesStatus, options: [
+                { value: "all", label: `Toutes (${orders.length})`, color: "#6D6D72" },
+                { value: "pending", label: `En attente (${pendingCount})`, color: "#FF9500" },
+                { value: "inprogress", label: `En cours (${inprogressCount})`, color: "#007AFF" },
+                { value: "done", label: `Terminées (${doneCount})`, color: "#34C759" },
+                { value: "unassigned", label: `Non assignées (${unassignedCount})`, color: "#AF52DE" },
+                { value: "overdue", label: `En retard (${overdueCount})`, color: "#FF3B30" }
+              ]},
+              { key: "date", type: "select", value: commandesDateRange, onChange: setCommandesDateRange, options: [
+                { value: "all", label: "Toutes les dates" },
+                { value: "today", label: "Aujourd'hui" },
+                { value: "week", label: "Cette semaine" },
+                { value: "month", label: "Ce mois" },
+                { value: "custom", label: "Personnalisé" },
+              ]},
+              ...(commandesDateRange === "custom" ? [{
+                key: "custom-date",
+                type: "date-range",
+                value: { from: commandesDateStart, to: commandesDateEnd },
+                onChange: ({ from, to }) => { setCommandesDateStart(from); setCommandesDateEnd(to); },
+              }] : []),
             ]}
-           ]} />
-         ]}
+          />,
+        ]}
       />
 
       {statusFiltered.length === 0 && (
@@ -134,8 +178,8 @@ export function CommandesSection({ orders, employees, commandesSearch, setComman
       {commandesStatus === "all" ? (
         <div>
           {(() => {
-            const done       = sortOrders(baseFiltered.filter(o => o.status === "done"));
-            const activeRaw  = sortOrders(baseFiltered.filter(o => o.status !== "done"));
+            const done       = sortOrders(dateFiltered.filter(o => o.status === "done"));
+            const activeRaw  = sortOrders(dateFiltered.filter(o => o.status !== "done"));
             const overdue    = activeRaw.filter(o => getDL(o.deadline).overdue);
             const inprogress = activeRaw.filter(o => o.status === "inprogress" && !getDL(o.deadline).overdue);
             const waiting    = activeRaw.filter(o => o.status === "pending" && !getDL(o.deadline).overdue);

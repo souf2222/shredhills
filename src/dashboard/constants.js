@@ -8,12 +8,14 @@ export const PERMISSION_LABELS = {
   canManageEvents:       "Gérer les événements",
   canManageDeliveries:   "Gérer les livraisons",
   canManageExpenses:     "Gérer les dépenses",
+  canManageAcquisitions: "Gérer les demandes d'achat",
   canManageReports:      "Gérer les feuilles de temps",
   canViewEvents:         "Voir les événements",
   canViewDeliveries:     "Voir mes tournées",
   canViewTasks:          "Voir les tâches",
   canClockIn:            "Ma feuille de temps",
   canSubmitExpenses:     "Soumettre des dépenses",
+  canSubmitAcquisitions: "Soumettre des demandes d'achat",
 };
 
 export const COLORS = [
