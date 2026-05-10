@@ -78,10 +78,6 @@ export function useFirestore() {
       onSnapshot(query(collection(db, "contacts"), orderBy("name", "asc")), snap => {
         setContacts(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
       }, () => done()),
-
-      onSnapshot(query(collection(db, "contacts"), orderBy("name", "asc")), snap => {
-        setContacts(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
-      }, () => done()),
     ];
 
     return () => unsubs.forEach(u => u());
