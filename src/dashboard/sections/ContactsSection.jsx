@@ -21,7 +21,7 @@ export function ContactsSection({ contacts, search, setSearch, typeFilter, setTy
   return (
     <div>
       <PageHeader
-        title="Annuaire"
+        title="Contacts"
         total={contacts.length}
         filteredCount={filtered.length}
         search={{ value: search, onChange: setSearch, placeholder: "Rechercher un contact…" }}

@@ -1,5 +1,5 @@
 // src/components/ContactPicker.jsx
-// Combobox searchable pour sélectionner un contact de l'annuaire.
+// Combobox searchable pour sélectionner un contact.
 import { useState, useRef, useEffect } from "react";
 import { formatAddressShort } from "../utils/helpers";
 

@@ -53,7 +53,7 @@ export function EditStopModal({ editStopModal, setEditStopModal, drivers, contac
             onChange={handleContactChange}
             label="Client"
             required
-            placeholder="Rechercher un contact de l'annuaire…"
+            placeholder="Rechercher un contact…"
           />
 
           {!editStopModal.contactId && (

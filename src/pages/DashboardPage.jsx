@@ -125,7 +125,7 @@ export function DashboardPage() {
     pushTab("commandes", `📦 Commandes${adminActive.length > 0 ? ` (${adminActive.length})` : ""}`);
   }
   if (can("canManageContacts")) {
-    pushTab("annuaire", `📇 Annuaire${contacts.length > 0 ? ` (${contacts.length})` : ""}`);
+    pushTab("contacts", `📇 Contacts`);
   }
   if (can("canManageDeliveries")) {
     pushTab("gestion-tournees", "🚐 Gestion des tournées");
@@ -151,10 +151,10 @@ export function DashboardPage() {
   }
   if (can("canSubmitAcquisitions")) {
     const myPendingAcq = myAcquisitions.filter(a => a.status === "pending").length;
-    pushTab("mes-acquisitions", `📦 Demande d'achats${myPendingAcq > 0 ? ` (${myPendingAcq})` : ""}`);
+    pushTab("demande-achats",`📦 Demande d'achats${myPendingAcq > 0 ? ` (${myPendingAcq})` : ""}`);
   }
   if (can("canManageAcquisitions")) {
-    pushTab("acquisitions", `📦 Gestion des achats${pendingAcquisitions > 0 ? ` (${pendingAcquisitions})` : ""}`);
+    pushTab("gestion-achats", `📦 Gestion des achats${pendingAcquisitions > 0 ? ` (${pendingAcquisitions})` : ""}`);
   }
   if (can("canManageUsers")) {
     pushTab("equipe", "👥 Équipe");
@@ -477,7 +477,7 @@ export function DashboardPage() {
           />
         )}
 
-        {tab === "annuaire" && can("canManageContacts") && (
+        {tab === "contacts" && can("canManageContacts") && (
           <ContactsSection
             contacts={contacts}
             search={contactsSearch} setSearch={setContactsSearch}
@@ -546,7 +546,7 @@ export function DashboardPage() {
           />
         )}
 
-        {tab === "mes-acquisitions" && can("canSubmitAcquisitions") && (
+        {tab === "demande-achats" && can("canSubmitAcquisitions") && (
           <MesAcquisitionsSection
             acquisitions={myAcquisitions}
             onNewAcquisition={() => setAcquisitionModal("new")}
@@ -554,7 +554,7 @@ export function DashboardPage() {
           />
         )}
 
-        {tab === "acquisitions" && can("canManageAcquisitions") && (
+        {tab === "gestion-achats" && can("canManageAcquisitions") && (
           <AcquisitionsAdminSection
             acquisitions={acquisitions}
             users={users}

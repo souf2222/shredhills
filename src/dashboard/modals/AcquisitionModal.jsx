@@ -119,14 +119,14 @@ export function AcquisitionModal({ open, onClose, onSubmit, contacts, initialDat
             disabled={!!initialData}
             style={{ cursor: "pointer" }}
           >
-            <option value="">-- Choisir dans l'annuaire --</option>
+            <option value="">-- Choisir dans les contacts --</option>
             {supplierOptions.map(c => (
               <option key={c.id} value={c.id}>{c.name}{c.company ? ` (${c.company})` : ""}</option>
             ))}
           </select>
           {supplierOptions.length === 0 && (
             <p style={{ fontSize: 12, color: "#8E8E93", marginTop: 4 }}>
-              Aucun fournisseur dans l'annuaire. Vous pouvez quand même soumettre sans fournisseur.
+              Aucun fournisseur dans les contacts. Vous pouvez quand même soumettre sans fournisseur.
             </p>
           )}
         </div>

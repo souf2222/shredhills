@@ -8,10 +8,12 @@ export function FeuillesTempsSection({ users, punches, dateRange, setDateRange, 
 
   const clockInUsers = users.filter(u => u.permissions?.canClockIn);
 
+  const rangeLabel = `(${new Date(rangeStart).toLocaleDateString("fr-CA")} au ${new Date(rangeEnd).toLocaleDateString("fr-CA")})`;
+
   return (
     <div>
       <PageHeader
-        title="Gestion des feuilles de temps"
+        title={`Gestion des feuilles de temps ${rangeLabel}`}
         total={clockInUsers.length}
         filteredCount={clockInUsers.length}
         filters={[
