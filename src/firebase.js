@@ -21,13 +21,19 @@ import {
 import { getFirestore } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
+const requiredEnv = (name) => {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing environment variable: ${name}`);
+  return value;
+};
+
 const firebaseConfig = {
-  apiKey:            process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSyDv6eF-AHW89jItyWup2hb0eYswrxYkZbg",
-  authDomain:        process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || "shredhills-dev.firebaseapp.com",
-  projectId:         process.env.REACT_APP_FIREBASE_PROJECT_ID || "shredhills-dev",
-  storageBucket:     process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || "shredhills-dev.firebasestorage.app",
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || "1010718278824",
-  appId:             process.env.REACT_APP_FIREBASE_APP_ID || "1:1010718278824:web:59712e8810383e84286e9d"
+  apiKey:            requiredEnv("REACT_APP_FIREBASE_API_KEY"),
+  authDomain:        requiredEnv("REACT_APP_FIREBASE_AUTH_DOMAIN"),
+  projectId:         requiredEnv("REACT_APP_FIREBASE_PROJECT_ID"),
+  storageBucket:     requiredEnv("REACT_APP_FIREBASE_STORAGE_BUCKET"),
+  messagingSenderId: requiredEnv("REACT_APP_FIREBASE_MESSAGING_SENDER_ID"),
+  appId:             requiredEnv("REACT_APP_FIREBASE_APP_ID")
 };
 
 const app     = initializeApp(firebaseConfig);
