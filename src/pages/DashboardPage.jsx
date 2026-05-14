@@ -104,7 +104,7 @@ export function DashboardPage() {
   const showToast = (m) => setToast(m);
 
   // Derived
-  const employees = users.filter(u => u.jobs?.includes("employee"));
+  const employees = users.filter(u => u.permissions?.canViewTasks);
   const drivers   = users.filter(u => u.permissions?.canViewDeliveries || u.permissions?.canManageDeliveries);
   const myOrders  = orders.filter(o => o.assignedTo === userProfile.id);
   const adminActive = orders.filter(o => o.status !== "done");
