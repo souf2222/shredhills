@@ -41,8 +41,8 @@ import { RefuseAcquisitionModal } from "../dashboard/modals/RefuseAcquisitionMod
 import { todayStr, toDateKey, DAY } from "../utils/helpers";
 
 export function DashboardPage() {
-  const fsData = useFirestore();
-  const { userProfile, can } = useAuth();
+  const { userProfile, can, firebaseUser } = useAuth();
+  const fsData = useFirestore(firebaseUser);
   const {
     users, orders, stops, punches, purchases, events, categories, contacts, acquisitions,
     updateUser, deleteUser,

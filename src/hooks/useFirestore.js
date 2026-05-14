@@ -26,7 +26,7 @@ function normalizeEvent(doc) {
   };
 }
 
-export function useFirestore() {
+export function useFirestore(authUser) {
   const [users,       setUsers]       = useState([]);
   const [orders,      setOrders]      = useState([]);
   const [stops,       setStops]       = useState([]);
@@ -38,55 +38,70 @@ export function useFirestore() {
   const [acquisitions, setAcquisitions] = useState([]);
   const [loading,     setLoading]     = useState(true);
 
+  const authUid = authUser?.uid || null;
+
   useEffect(() => {
+    // Don't subscribe until the user is authenticated. Firestore rules require
+    // request.auth != null, so attaching listeners before auth is established
+    // would cause permission-denied errors that are silently swallowed,
+    // resulting in empty data until the user refreshes.
+    if (!authUid) {
+      setLoading(true);
+      return;
+    }
+
     let loaded = 0;
     const TOTAL = 9;
     const done = () => { loaded++; if (loaded >= TOTAL) setLoading(false); };
+    const onErr = (label) => (err) => {
+      console.error(`Firestore listener error (${label}):`, err);
+      done();
+    };
 
     const unsubs = [
       onSnapshot(collection(db, "users"), snap => {
         setUsers(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
-      }, () => done()),
+      }, onErr("users")),
 
       onSnapshot(query(collection(db, "orders"), orderBy("createdAt", "desc")), snap => {
         setOrders(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
-      }, () => done()),
+      }, onErr("orders")),
 
       onSnapshot(query(collection(db, "stops"), orderBy("createdAt", "desc")), snap => {
         setStops(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
-      }, () => done()),
+      }, onErr("stops")),
 
       onSnapshot(collection(db, "punches"), snap => {
         const map = {};
         snap.docs.forEach(d => { map[d.id] = d.data().sessions || []; });
         setPunches(map); done();
-      }, () => done()),
+      }, onErr("punches")),
 
       onSnapshot(query(collection(db, "purchases"), orderBy("submittedAt", "desc")), snap => {
         setPurchases(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
-      }, () => done()),
+      }, onErr("purchases")),
 
       onSnapshot(query(collection(db, "events"), orderBy("startDate", "asc")), snap => {
         setEvents(snap.docs.map(normalizeEvent)); done();
-      }, () => done()),
+      }, onErr("events")),
 
       onSnapshot(collection(db, "purchaseCategories"), snap => {
         const list = snap.docs.map(d => ({ ...d.data(), id: d.id }));
         list.sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || (a.label || "").localeCompare(b.label || ""));
         setCategories(list); done();
-      }, () => done()),
+      }, onErr("purchaseCategories")),
 
       onSnapshot(query(collection(db, "contacts"), orderBy("name", "asc")), snap => {
         setContacts(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
-      }, () => done()),
+      }, onErr("contacts")),
 
       onSnapshot(query(collection(db, "acquisitions"), orderBy("submittedAt", "desc")), snap => {
         setAcquisitions(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
-      }, () => done()),
+      }, onErr("acquisitions")),
     ];
 
     return () => unsubs.forEach(u => u());
-  }, []);
+  }, [authUid]);
 
   // USERS
   const saveUser   = (user) => setDoc(doc(db, "users", user.id), user);
