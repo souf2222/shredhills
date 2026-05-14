@@ -125,6 +125,13 @@ export function useFirestore() {
     });
   };
 
+  const deletePunchSession = async (empId, sessionId) => {
+    const current = getPunchSessions(empId);
+    await setDoc(doc(db, "punches", empId), {
+      sessions: current.filter(s => s.id !== sessionId)
+    });
+  };
+
   // EXPENSES (formerly PURCHASES)
   // Creates an expense doc, then uploads the receipt photo if provided
   // and patches the doc with { photoUrl, photoPath }. Returns the expense id.
@@ -234,7 +241,7 @@ export function useFirestore() {
     saveUser, updateUser, deleteUser,
     addOrder, updateOrder, deleteOrder,
     addStop, updateStop, deleteStop,
-    getPunchSessions, addPunchSession, updatePunchSession, closePunchSession,
+    getPunchSessions, addPunchSession, updatePunchSession, closePunchSession, deletePunchSession,
     addExpense, updateExpense, approveExpense, refuseExpense, deleteExpense,
     addCategory, updateCategory, deleteCategory,
     addEvent, updateEvent, deleteEvent,

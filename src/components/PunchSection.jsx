@@ -12,7 +12,7 @@ import {
 import { PageHeader } from "./PageHeader";
 import { FilterBar } from "./FilterBar";
 
-function PunchEditModal({ punch, onSave, onClose }) {
+function PunchEditModal({ punch, onSave, onClose, onDelete }) {
   const [pIn, setPIn] = useState(fmtTimeInput(punch.punchIn));
   const [pOut, setPOut] = useState(punch.punchOut ? fmtTimeInput(punch.punchOut) : "");
   const [note, setNote] = useState(punch.note || "");
@@ -71,6 +71,9 @@ function PunchEditModal({ punch, onSave, onClose }) {
           )}
         </div>
         <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+          <button className="btn btn-red" style={{ flex: 1, justifyContent: "center" }} onClick={onDelete}>
+            Supprimer
+          </button>
           <button className="btn btn-outline" style={{ flex: 1, justifyContent: "center" }} onClick={onClose}>
             Annuler
           </button>
@@ -83,7 +86,7 @@ function PunchEditModal({ punch, onSave, onClose }) {
   );
 }
 
-export function PunchSection({ userId, punches, updatePunchSession, showToast }) {
+export function PunchSection({ userId, punches, updatePunchSession, deletePunchSession, showToast }) {
   const sessions = punches[userId] || [];
   const [editPunch, setEditPunch] = useState(null);
   const [dateRange, setDateRange] = useState("week");
@@ -132,6 +135,13 @@ export function PunchSection({ userId, punches, updatePunchSession, showToast })
     updatePunchSession(userId, updated);
     setEditPunch(null);
     showToast && showToast("Session modifiée", "success");
+  };
+
+  const handleDeletePunch = () => {
+    if (!window.confirm("Supprimer cette session de pointage ?")) return;
+    deletePunchSession(userId, editPunch.id);
+    setEditPunch(null);
+    showToast && showToast("Session supprimée", "success");
   };
 
   return (
@@ -285,7 +295,7 @@ export function PunchSection({ userId, punches, updatePunchSession, showToast })
         </div>
       )}
 
-      {editPunch && <PunchEditModal punch={editPunch} onSave={savePunchEdit} onClose={() => setEditPunch(null)} />}
+      {editPunch && <PunchEditModal punch={editPunch} onSave={savePunchEdit} onDelete={handleDeletePunch} onClose={() => setEditPunch(null)} />}
     </div>
   );
 }

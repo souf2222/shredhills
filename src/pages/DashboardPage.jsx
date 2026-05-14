@@ -52,7 +52,7 @@ export function DashboardPage() {
     addCategory, updateCategory, deleteCategory,
     addEvent, updateEvent, deleteEvent,
     addContact, updateContact, deleteContact,
-    addPunchSession, closePunchSession, updatePunchSession,
+    addPunchSession, closePunchSession, updatePunchSession, deletePunchSession,
     addAcquisition, updateAcquisition, deleteAcquisition: fsDeleteAcquisition,
     approveAcquisition: fsApproveAcquisition, refuseAcquisition: fsRefuseAcquisition,
     orderAcquisition: fsOrderAcquisition, receiveAcquisition: fsReceiveAcquisition,
@@ -542,6 +542,7 @@ export function DashboardPage() {
             userId={userProfile.id}
             punches={punches}
             updatePunchSession={updatePunchSession}
+            deletePunchSession={deletePunchSession}
             showToast={showToast}
           />
         )}
