@@ -534,6 +534,9 @@ export function DashboardPage() {
             dateRange={dateRange} setDateRange={setDateRange}
             customStart={customStart} setCustomStart={setCustomStart}
             customEnd={customEnd} setCustomEnd={setCustomEnd}
+            updatePunchSession={updatePunchSession}
+            deletePunchSession={deletePunchSession}
+            showToast={showToast}
           />
         )}
 

@@ -1,14 +1,33 @@
 // src/dashboard/sections/FeuillesTempsSection.jsx
+import { useState } from "react";
 import { fmtHours, fmtTime, fmtDate, getDateRange, groupByDay, dayStart } from "../../utils/helpers";
 import { PageHeader } from "../../components/PageHeader";
 import { FilterBar } from "../../components/FilterBar";
+import { PunchEditModal } from "../../components/PunchEditModal";
 
-export function FeuillesTempsSection({ users, punches, dateRange, setDateRange, customStart, setCustomStart, customEnd, setCustomEnd }) {
+export function FeuillesTempsSection({ users, punches, dateRange, setDateRange, customStart, setCustomStart, customEnd, setCustomEnd, updatePunchSession, deletePunchSession, showToast }) {
   const { start: rangeStart, end: rangeEnd } = getDateRange(dateRange, customStart, customEnd);
+  const [editPunch, setEditPunch] = useState(null);
+  const [editUserId, setEditUserId] = useState(null);
 
   const clockInUsers = users.filter(u => u.permissions?.canClockIn);
 
   const rangeLabel = `(${new Date(rangeStart).toLocaleDateString("fr-CA")} au ${new Date(rangeEnd).toLocaleDateString("fr-CA")})`;
+
+  const savePunchEdit = (updated) => {
+    updatePunchSession(editUserId, updated);
+    setEditPunch(null);
+    setEditUserId(null);
+    showToast && showToast("Session modifiée", "success");
+  };
+
+  const handleDeletePunch = () => {
+    if (!window.confirm("Supprimer cette session de pointage ?")) return;
+    deletePunchSession(editUserId, editPunch.id);
+    setEditPunch(null);
+    setEditUserId(null);
+    showToast && showToast("Session supprimée", "success");
+  };
 
   return (
     <div>
@@ -73,9 +92,18 @@ export function FeuillesTempsSection({ users, punches, dateRange, setDateRange, 
                     <span style={{ fontFamily:"monospace", fontWeight:800, color:hasActive?"#FF9500":"#007AFF", fontSize:13 }}>{fmtHours(dMs)}</span>
                   </div>
                   {sessions.map((s,i) => (
-                    <div key={s.id} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#6D6D72", padding:"1px 0" }}>
+                    <div key={s.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:11, color:"#6D6D72", padding:"1px 0" }}>
                       <span>Session {i+1} : {fmtTime(s.punchIn)} → {s.punchOut?fmtTime(s.punchOut):"en cours"}{s.note && <span style={{ color:"#FF9500", marginLeft:4 }}>✏️ {s.note}</span>}</span>
-                      {s.punchOut && <span style={{ fontFamily:"monospace", fontWeight:600 }}>{fmtHours(s.punchOut - s.punchIn)}</span>}
+                      <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                        {s.punchOut && <span style={{ fontFamily:"monospace", fontWeight:600 }}>{fmtHours(s.punchOut - s.punchIn)}</span>}
+                        <button
+                          className="btn btn-outline"
+                          style={{ fontSize: 10, padding: "2px 7px", flexShrink: 0 }}
+                          onClick={() => { setEditPunch(s); setEditUserId(u.id); }}
+                        >
+                          Modif.
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -84,6 +112,8 @@ export function FeuillesTempsSection({ users, punches, dateRange, setDateRange, 
           </div>
         );
       })}
+
+      {editPunch && <PunchEditModal punch={editPunch} onSave={savePunchEdit} onDelete={handleDeletePunch} onClose={() => { setEditPunch(null); setEditUserId(null); }} />}
     </div>
   );
 }
