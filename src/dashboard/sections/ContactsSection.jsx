@@ -21,7 +21,7 @@ export function ContactsSection({ contacts, search, setSearch, typeFilter, setTy
   return (
     <div>
       <PageHeader
-        title="Annuaire"
+        title="Contacts"
         total={contacts.length}
         filteredCount={filtered.length}
         search={{ value: search, onChange: setSearch, placeholder: "Rechercher un contact…" }}
@@ -32,7 +32,7 @@ export function ContactsSection({ contacts, search, setSearch, typeFilter, setTy
             hasFilters={typeFilter !== "all" || search.trim()}
             onReset={() => { setTypeFilter("all"); setSearch(""); }}
             filters={[{
-              key: "type", type: "toggle-group", value: typeFilter, onChange: setTypeFilter,
+              key: "type", type: "select", value: typeFilter, onChange: setTypeFilter,
               options: [
                 { value: "all",      label: `Tous (${contacts.length})`,                color: "#6D6D72" },
                 { value: "client",   label: `Clients (${countByType("client")})`,       color: "#007AFF" },

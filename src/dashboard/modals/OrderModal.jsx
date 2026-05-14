@@ -85,7 +85,7 @@ export function OrderModal({ order, employees, users, contacts, onSave, onDelete
               onChange={handleContactChange}
               label="Client"
               required
-              placeholder="Rechercher un contact de l'annuaire…"
+              placeholder="Rechercher un contact…"
             />
           </div>
 

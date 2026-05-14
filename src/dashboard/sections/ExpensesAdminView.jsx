@@ -50,14 +50,14 @@ export function ExpensesAdminView({ purchases, users, categories, onApprove, onR
             filters={[
               {
                 key: "status",
-                type: "toggle-group",
+                type: "select",
                 value: statusFilter,
                 onChange: setStatusFilter,
                 options: [
-                  { value: "all", label: `Toutes (${purchases.length})`, color: "#6D6D72" },
-                  { value: "pending", label: `En attente (${pendingCount})`, color: "#FF9500" },
-                  { value: "approved", label: "Approuvées", color: "#34C759" },
-                  { value: "refused", label: "Refusées", color: "#FF3B30" },
+                  { value: "all", label: `Toutes (${purchases.length})` },
+                  { value: "pending", label: `En attente (${pendingCount})` },
+                  { value: "approved", label: "Approuvées" },
+                  { value: "refused", label: "Refusées" },
                 ],
               },
               {

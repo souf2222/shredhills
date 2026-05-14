@@ -108,8 +108,10 @@ export function PunchSection({ userId, punches, updatePunchSession, showToast })
     setCustomRange({ from: "", to: "" });
   };
 
+  const rangeLabel = `(${new Date(rangeStart).toLocaleDateString("fr-CA")} au ${new Date(rangeEnd).toLocaleDateString("fr-CA")})`;
+
   // ---- Titre dynamique ----
-  const pageTitle = "Ma feuille de temps";
+  const pageTitle = `Ma feuille de temps ${rangeLabel}`;
 
   // ---- Résumé stats globales ----
   const todayStart_ = dayStart(Date.now());

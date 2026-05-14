@@ -35,11 +35,12 @@ export function useFirestore() {
   const [events,      setEvents]      = useState([]);
   const [categories,  setCategories]  = useState([]);
   const [contacts,    setContacts]    = useState([]);
+  const [acquisitions, setAcquisitions] = useState([]);
   const [loading,     setLoading]     = useState(true);
 
   useEffect(() => {
     let loaded = 0;
-    const TOTAL = 8;
+    const TOTAL = 9;
     const done = () => { loaded++; if (loaded >= TOTAL) setLoading(false); };
 
     const unsubs = [
@@ -79,8 +80,8 @@ export function useFirestore() {
         setContacts(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
       }, () => done()),
 
-      onSnapshot(query(collection(db, "contacts"), orderBy("name", "asc")), snap => {
-        setContacts(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
+      onSnapshot(query(collection(db, "acquisitions"), orderBy("submittedAt", "desc")), snap => {
+        setAcquisitions(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
       }, () => done()),
     ];
 
@@ -191,8 +192,45 @@ export function useFirestore() {
   const updateContact = (id, data) => updateDoc(doc(db, "contacts", id), { ...data, updatedAt: serverTimestamp() });
   const deleteContact = (id) => deleteDoc(doc(db, "contacts", id));
 
+  // ACQUISITIONS
+  const addAcquisition = (acq) => addDoc(collection(db, "acquisitions"), {
+    ...acq,
+    submittedAt: serverTimestamp(),
+  });
+  const updateAcquisition = (id, data) => updateDoc(doc(db, "acquisitions", id), data);
+  const deleteAcquisition = (id) => deleteDoc(doc(db, "acquisitions", id));
+
+  const approveAcquisition = (id, decidedBy, decidedByName) =>
+    updateDoc(doc(db, "acquisitions", id), {
+      status: "approved",
+      decidedAt: Date.now(),
+      decidedBy: decidedBy || null,
+      decidedByName: decidedByName || null,
+    });
+
+  const refuseAcquisition = (id, reason, decidedBy, decidedByName) =>
+    updateDoc(doc(db, "acquisitions", id), {
+      status: "refused",
+      decidedAt: Date.now(),
+      refusedReason: reason || "",
+      decidedBy: decidedBy || null,
+      decidedByName: decidedByName || null,
+    });
+
+  const orderAcquisition = (id) =>
+    updateDoc(doc(db, "acquisitions", id), {
+      status: "ordered",
+      orderedAt: Date.now(),
+    });
+
+  const receiveAcquisition = (id) =>
+    updateDoc(doc(db, "acquisitions", id), {
+      status: "received",
+      receivedAt: Date.now(),
+    });
+
   return {
-    users, orders, stops, punches, purchases, events, categories, contacts, loading,
+    users, orders, stops, punches, purchases, events, categories, contacts, acquisitions, loading,
     saveUser, updateUser, deleteUser,
     addOrder, updateOrder, deleteOrder,
     addStop, updateStop, deleteStop,
@@ -201,5 +239,6 @@ export function useFirestore() {
     addCategory, updateCategory, deleteCategory,
     addEvent, updateEvent, deleteEvent,
     addContact, updateContact, deleteContact,
+    addAcquisition, updateAcquisition, deleteAcquisition, approveAcquisition, refuseAcquisition, orderAcquisition, receiveAcquisition,
   };
 }

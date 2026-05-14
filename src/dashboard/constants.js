@@ -4,16 +4,18 @@
 export const PERMISSION_LABELS = {
   canManageUsers:        "Gérer les utilisateurs",
   canManageOrders:       "Gérer les commandes",
-  canManageContacts:     "Gérer l'annuaire",
+  canManageContacts:     "Gérer les contacts",
   canManageEvents:       "Gérer les événements",
   canManageDeliveries:   "Gérer les livraisons",
   canManageExpenses:     "Gérer les dépenses",
+  canManageAcquisitions: "Gérer les demandes d'achat",
   canManageReports:      "Gérer les feuilles de temps",
   canViewEvents:         "Voir les événements",
   canViewDeliveries:     "Voir mes tournées",
   canViewTasks:          "Voir les tâches",
   canClockIn:            "Ma feuille de temps",
   canSubmitExpenses:     "Soumettre des dépenses",
+  canSubmitAcquisitions: "Soumettre des demandes d'achat",
 };
 
 export const COLORS = [

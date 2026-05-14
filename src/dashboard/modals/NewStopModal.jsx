@@ -66,7 +66,7 @@ export function NewStopModal({ newStop, setNewStop, drivers, contacts, tourneeDa
             onChange={handleContactChange}
             label="Client"
             required
-            placeholder="Rechercher un contact de l'annuaire…"
+            placeholder="Rechercher un contact…"
           />
 
           {!newStop.contactId && (
