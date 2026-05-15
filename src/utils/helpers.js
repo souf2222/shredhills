@@ -65,8 +65,14 @@ export const fmtEventTime = (ts) =>
 export const daysUntil = (ts) => Math.ceil((ts - Date.now()) / DAY);
 
 export const isEventPast = (e) => {
-  if (!e || !e.endDate) return false;
-  return e.allDay ? e.endDate + DAY - 1 < Date.now() : e.endDate < Date.now();
+  if (!e) return false;
+  const now = Date.now();
+  // Use the latest of startDate/endDate as the effective end, to guard against
+  // data where endDate was left behind when startDate was moved forward.
+  const start = e.startDate || 0;
+  const end = Math.max(e.endDate || 0, start);
+  if (!end) return false;
+  return e.allDay ? end + DAY - 1 < now : end < now;
 };
 
 export const getDL = (deadline) => {

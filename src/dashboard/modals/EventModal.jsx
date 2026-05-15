@@ -152,7 +152,19 @@ export function EventModal({ event, users, onSave, onDelete, onClose, currentUse
                 type={form.allDay ? "date" : "datetime-local"}
                 className="inp"
                 value={form.allDay ? toDateOnlyInput(form.startDate) : toDateInput(form.startDate)}
-                onChange={e => set("startDate", form.allDay ? new Date(e.target.value + "T00:00:00").getTime() : new Date(e.target.value).getTime())}
+                onChange={e => {
+                  const newStart = form.allDay
+                    ? new Date(e.target.value + "T00:00:00").getTime()
+                    : new Date(e.target.value).getTime();
+                  setForm(f => ({
+                    ...f,
+                    startDate: newStart,
+                    // Keep endDate >= startDate so events don't get stranded in the past.
+                    endDate: f.endDate < newStart
+                      ? (f.allDay ? newStart : newStart + 3600000)
+                      : f.endDate,
+                  }));
+                }}
               />
             </div>
             <div style={{ flex:1 }}>

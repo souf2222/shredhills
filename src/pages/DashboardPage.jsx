@@ -38,7 +38,7 @@ import { DeleteExpenseModal } from "../dashboard/modals/DeleteExpenseModal";
 import { AcquisitionModal } from "../dashboard/modals/AcquisitionModal";
 import { RefuseAcquisitionModal } from "../dashboard/modals/RefuseAcquisitionModal";
 
-import { todayStr, toDateKey, DAY } from "../utils/helpers";
+import { todayStr, toDateKey, DAY, isEventPast } from "../utils/helpers";
 
 export function DashboardPage() {
   const { userProfile, can, firebaseUser } = useAuth();
@@ -118,7 +118,7 @@ export function DashboardPage() {
 
 
   if (can("canManageEvents") || can("canViewEvents")) {
-    const count = events.filter(e => e.endDate >= Date.now()).length;
+    const count = events.filter(e => !isEventPast(e)).length;
     pushTab("evenements", `📅 Événements${count > 0 ? ` (${count})` : ""}`);
   }
   if (can("canManageOrders")) {
