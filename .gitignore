@@ -5,6 +5,8 @@ node_modules/
 .playwright-mcp/
 .run/
 *.png
+!src/assets/*.png
+!public/*.png
 .DS_Store
 build/
 refactor.py

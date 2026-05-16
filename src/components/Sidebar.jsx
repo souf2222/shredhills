@@ -37,7 +37,7 @@ export function Sidebar({ tabs, active, onNavigate, subtitle, badge }) {
     <>
       {/* Brand */}
       <div className="sb-brand">
-        <Logo size={36}/>
+        <Logo size={36} tone="light"/>
         <div style={{ minWidth:0 }}>
           <div className="sb-brand-title">Shredhills</div>
           {subtitle && <div className="sb-brand-sub">{subtitle}</div>}

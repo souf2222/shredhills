@@ -1,20 +1,38 @@
 // src/components/Logo.jsx
-export function Logo({ size = 32 }) {
+import logoUrl from "../assets/flower_logo_black.png";
+
+// Natural aspect ratio of the source artwork (2851 x 2639).
+const ASPECT = 2851 / 2639;
+
+/**
+ * Brand logo (SH wreath).
+ *
+ * Props:
+ *  - size: pixel height of the logo (default 32). Width scales to preserve
+ *          the source artwork's natural aspect ratio.
+ *  - tone: "auto" (default) renders the black artwork on transparent.
+ *          "light" inverts the artwork to white (use on dark surfaces).
+ *  - alt:  accessible label.
+ */
+export function Logo({ size = 32, tone = "auto", alt = "Shredhills" }) {
+  const invert = tone === "light";
+  const height = size;
+  const width = Math.round(size * ASPECT);
   return (
-    <svg width={size} height={size} viewBox="0 0 80 80" fill="none">
-      <rect width="80" height="80" rx="18" fill="#111"/>
-      <g fill="white" opacity=".85">
-        <ellipse cx="14" cy="40" rx="3.5" ry="6" transform="rotate(-15 14 40)"/>
-        <ellipse cx="12" cy="30" rx="3" ry="5" transform="rotate(-30 12 30)"/>
-        <ellipse cx="14" cy="50" rx="3" ry="5" transform="rotate(10 14 50)"/>
-        <ellipse cx="66" cy="40" rx="3.5" ry="6" transform="rotate(15 66 40)"/>
-        <ellipse cx="68" cy="30" rx="3" ry="5" transform="rotate(30 68 30)"/>
-        <ellipse cx="66" cy="50" rx="3" ry="5" transform="rotate(-10 66 50)"/>
-      </g>
-      <text x="40" y="46" textAnchor="middle" fontSize="19" fontWeight="800"
-        fontFamily="Georgia,serif" fill="white" letterSpacing="-0.5">SH</text>
-      <ellipse cx="54" cy="26" rx="2.5" ry="3.5" fill="white" opacity=".7"/>
-      <ellipse cx="54" cy="24.5" rx="1.2" ry="1.8" fill="white"/>
-    </svg>
+    <img
+      src={logoUrl}
+      alt={alt}
+      width={width}
+      height={height}
+      style={{
+        width,
+        height,
+        objectFit: "contain",
+        display: "block",
+        filter: invert ? "invert(1)" : undefined,
+        userSelect: "none",
+      }}
+      draggable={false}
+    />
   );
 }
