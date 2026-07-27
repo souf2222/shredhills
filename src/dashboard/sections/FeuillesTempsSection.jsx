@@ -4,11 +4,13 @@ import { fmtHours, fmtTime, fmtDate, getDateRange, groupByDay, dayStart } from "
 import { PageHeader } from "../../components/PageHeader";
 import { FilterBar } from "../../components/FilterBar";
 import { PunchEditModal } from "../../components/PunchEditModal";
+import { PunchAddModal } from "../../components/PunchAddModal";
 
-export function FeuillesTempsSection({ users, punches, dateRange, setDateRange, customStart, setCustomStart, customEnd, setCustomEnd, updatePunchSession, deletePunchSession, showToast }) {
+export function FeuillesTempsSection({ users, punches, dateRange, setDateRange, customStart, setCustomStart, customEnd, setCustomEnd, addPunchSession, updatePunchSession, deletePunchSession, showToast }) {
   const { start: rangeStart, end: rangeEnd } = getDateRange(dateRange, customStart, customEnd);
   const [editPunch, setEditPunch] = useState(null);
   const [editUserId, setEditUserId] = useState(null);
+  const [addPunchUser, setAddPunchUser] = useState(null);
 
   const clockInUsers = users.filter(u => u.permissions?.canClockIn);
 
@@ -19,6 +21,12 @@ export function FeuillesTempsSection({ users, punches, dateRange, setDateRange, 
     setEditPunch(null);
     setEditUserId(null);
     showToast && showToast("Session modifiée", "success");
+  };
+
+  const handleAddPunch = (session) => {
+    addPunchSession(addPunchUser.id, session);
+    setAddPunchUser(null);
+    showToast && showToast("Pointage ajouté", "success");
   };
 
   const handleDeletePunch = () => {
@@ -81,7 +89,10 @@ export function FeuillesTempsSection({ users, punches, dateRange, setDateRange, 
                 </div>
                 {active && <span style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(52,199,89,.1)", border:"1px solid rgba(52,199,89,.3)", borderRadius:20, padding:"3px 10px", fontSize:12, fontWeight:600, color:"#34C759" }}><span style={{ width:5, height:5, borderRadius:"50%", background:"#34C759", animation:"blink 1s ease infinite" }}/>En service</span>}
               </div>
-              <div style={{ fontSize:24, fontWeight:700, color:"#007AFF" }}>{fmtHours(rangeMs)}</div>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <button className="btn btn-primary" style={{ fontSize:11, padding:"4px 10px" }} onClick={() => setAddPunchUser(u)}>+ Ajouter</button>
+                <div style={{ fontSize:24, fontWeight:700, color:"#007AFF" }}>{fmtHours(rangeMs)}</div>
+              </div>
             </div>
             <div style={{ borderTop:"1px solid #F2F2F7", paddingTop:12 }}>
               {days.length === 0 && <p style={{ fontSize:13, color:"#C7C7CC", textAlign:"center", padding:"8px 0" }}>Aucun pointage</p>}
@@ -113,6 +124,7 @@ export function FeuillesTempsSection({ users, punches, dateRange, setDateRange, 
         );
       })}
 
+      {addPunchUser && <PunchAddModal user={addPunchUser} onSave={handleAddPunch} onClose={() => setAddPunchUser(null)} />}
       {editPunch && <PunchEditModal punch={editPunch} onSave={savePunchEdit} onDelete={handleDeletePunch} onClose={() => { setEditPunch(null); setEditUserId(null); }} />}
     </div>
   );
