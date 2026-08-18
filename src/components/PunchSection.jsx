@@ -58,17 +58,27 @@ export function PunchSection({ userId, punches, updatePunchSession, deletePunchS
     .filter((s) => s.punchOut)
     .reduce((a, s) => a + (s.punchOut - s.punchIn), 0);
 
-  const savePunchEdit = (updated) => {
-    updatePunchSession(userId, updated);
-    setEditPunch(null);
-    showToast && showToast("Session modifiée", "success");
+  const savePunchEdit = async (updated) => {
+    try {
+      await updatePunchSession(userId, updated);
+      setEditPunch(null);
+      showToast && showToast("Session modifiée", "success");
+    } catch (err) {
+      showToast && showToast(err?.message === "INVALID_TIMESTAMP" ? "Horodatage invalide" : "Erreur lors de la modification", "error");
+      console.error("Punch edit error:", err);
+    }
   };
 
-  const handleDeletePunch = () => {
+  const handleDeletePunch = async () => {
     if (!window.confirm("Supprimer cette session de pointage ?")) return;
-    deletePunchSession(userId, editPunch.id);
-    setEditPunch(null);
-    showToast && showToast("Session supprimée", "success");
+    try {
+      await deletePunchSession(userId, editPunch.id);
+      setEditPunch(null);
+      showToast && showToast("Session supprimée", "success");
+    } catch (err) {
+      showToast && showToast("Erreur lors de la suppression", "error");
+      console.error("Punch delete error:", err);
+    }
   };
 
   return (

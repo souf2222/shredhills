@@ -16,25 +16,40 @@ export function FeuillesTempsSection({ users, punches, dateRange, setDateRange, 
 
   const rangeLabel = `(${new Date(rangeStart).toLocaleDateString("fr-CA")} au ${new Date(rangeEnd).toLocaleDateString("fr-CA")})`;
 
-  const savePunchEdit = (updated) => {
-    updatePunchSession(editUserId, updated);
-    setEditPunch(null);
-    setEditUserId(null);
-    showToast && showToast("Session modifiée", "success");
+  const savePunchEdit = async (updated) => {
+    try {
+      await updatePunchSession(editUserId, updated);
+      setEditPunch(null);
+      setEditUserId(null);
+      showToast && showToast("Session modifiée", "success");
+    } catch (err) {
+      showToast && showToast(err?.message === "INVALID_TIMESTAMP" ? "Horodatage invalide" : "Erreur lors de la modification", "error");
+      console.error("Punch edit error:", err);
+    }
   };
 
-  const handleAddPunch = (session) => {
-    addPunchSession(addPunchUser.id, session);
-    setAddPunchUser(null);
-    showToast && showToast("Pointage ajouté", "success");
+  const handleAddPunch = async (session) => {
+    try {
+      await addPunchSession(addPunchUser.id, session);
+      setAddPunchUser(null);
+      showToast && showToast("Pointage ajouté", "success");
+    } catch (err) {
+      showToast && showToast(err?.message === "ALREADY_ACTIVE_SESSION" ? "Cet employé a déjà une session active" : "Erreur lors de l'ajout", "error");
+      console.error("Punch add error:", err);
+    }
   };
 
-  const handleDeletePunch = () => {
+  const handleDeletePunch = async () => {
     if (!window.confirm("Supprimer cette session de pointage ?")) return;
-    deletePunchSession(editUserId, editPunch.id);
-    setEditPunch(null);
-    setEditUserId(null);
-    showToast && showToast("Session supprimée", "success");
+    try {
+      await deletePunchSession(editUserId, editPunch.id);
+      setEditPunch(null);
+      setEditUserId(null);
+      showToast && showToast("Session supprimée", "success");
+    } catch (err) {
+      showToast && showToast("Erreur lors de la suppression", "error");
+      console.error("Punch delete error:", err);
+    }
   };
 
   return (

@@ -67,3 +67,15 @@ test("admin can cancel", () => {
 test("cannot move out of completed", () => {
   assert.equal(canTransition("admin", "completed", "paid", false).ok, false);
 });
+
+test("supplier can move paid -> waiting_for_info", () => {
+  assert.equal(canTransition("supplier", "paid", "waiting_for_info", false).ok, true);
+});
+
+test("supplier can move in_production -> waiting_for_info", () => {
+  assert.equal(canTransition("supplier", "in_production", "waiting_for_info", false).ok, true);
+});
+
+test("supplier can move ready_to_ship -> waiting_for_info", () => {
+  assert.equal(canTransition("supplier", "ready_to_ship", "waiting_for_info", false).ok, true);
+});

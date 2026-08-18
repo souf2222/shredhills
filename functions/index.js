@@ -107,6 +107,19 @@ function requireAdmin(request) {
   }
 }
 
+// Input hardening helpers. Cloud Function callables accept arbitrary client
+// input, so every persisted field is clamped to a sane type + length to stop
+// oversized payloads, weird types, or injection of unexpected nested keys.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function clampStr(value, max) {
+  return typeof value === "string" ? value.slice(0, max) : "";
+}
+function clampInt(value, min, max) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(min, Math.min(max, Math.trunc(n)));
+}
+
 function sanitizeAccess(data, supplierId) {
   if (!data || !ROLES.includes(data.role)) {
     throw new HttpsError("invalid-argument", "A valid role is required.");
@@ -173,8 +186,11 @@ exports.createManagedUser = onCall(async (request) => {
   requireAdmin(request);
   const databaseId = databaseIdFrom(request.data, DB_DEV.value());
   const { email, password } = request.data || {};
-  if (typeof email !== "string" || typeof password !== "string" || password.length < 12) {
-    throw new HttpsError("invalid-argument", "A valid email and password of at least 12 characters are required.");
+  if (typeof email !== "string" || !EMAIL_RE.test(email) || email.length > 254) {
+    throw new HttpsError("invalid-argument", "A valid email is required.");
+  }
+  if (typeof password !== "string" || password.length < 12 || password.length > 256) {
+    throw new HttpsError("invalid-argument", "A password of 12–256 characters is required.");
   }
 
   const profile = sanitizeProfile(request.data);
@@ -416,8 +432,11 @@ exports.updateSupplierOrder = onCall(async (request) => {
     if (typeof orderId !== "string" || !orderId) {
       throw new HttpsError("invalid-argument", "An orderId is required.");
     }
-    if (!patch || typeof patch !== "object") {
+    if (!patch || typeof patch !== "object" || Array.isArray(patch)) {
       throw new HttpsError("invalid-argument", "A patch object is required.");
+    }
+    if (Object.keys(patch).length > 20) {
+      throw new HttpsError("invalid-argument", "Too many fields in patch.");
     }
 
     const ref = getDatabase(dbId).collection("supplierOrders").doc(orderId);
@@ -477,8 +496,12 @@ exports.updateSupplierOrder = onCall(async (request) => {
           throw new HttpsError("failed-precondition", "Estimated date may only be set during production.");
         }
       }
-      update.estimatedCompletionDate = patch.estimatedCompletionDate ?? null;
-      history.push(buildHistoryEntry(actor, role, "set_estimated", "estimatedCompletionDate", before.estimatedCompletionDate ?? null, patch.estimatedCompletionDate ?? null));
+      const est = patch.estimatedCompletionDate;
+      if (est != null && (typeof est !== "number" || !Number.isFinite(est))) {
+        throw new HttpsError("invalid-argument", "Estimated date must be a number or null.");
+      }
+      update.estimatedCompletionDate = est ?? null;
+      history.push(buildHistoryEntry(actor, role, "set_estimated", "estimatedCompletionDate", before.estimatedCompletionDate ?? null, est ?? null));
     }
 
     if (Object.prototype.hasOwnProperty.call(patch, "notes")) {
@@ -510,31 +533,48 @@ exports.updateSupplierOrder = onCall(async (request) => {
         if (field === "shippingLabel" && patch[field]) {
           const label = patch[field];
           update.shippingLabel = {
-            path: String(label.path || ""),
-            trackingNumber: label.trackingNumber ? String(label.trackingNumber) : null,
+            path: clampStr(label?.path, 500),
+            trackingNumber: label?.trackingNumber ? clampStr(label.trackingNumber, 100) : null,
             uploadedById: request.auth.uid,
             uploadedAt: Date.now(),
           };
+          if (!update.shippingLabel.path) {
+            throw new HttpsError("invalid-argument", "Shipping label path is required.");
+          }
           history.push(buildHistoryEntry(actor, role, "upload_label", "shippingLabel", before.shippingLabel?.path || null, update.shippingLabel.path));
         } else if (field === "attachments" && Array.isArray(patch[field])) {
+          if (patch[field].length > 50) {
+            throw new HttpsError("invalid-argument", "Too many attachments (max 50).");
+          }
           update.attachments = patch[field].map(a => ({
-            name: String(a.name || "file"),
-            path: String(a.path || ""),
-            contentType: String(a.contentType || "application/octet-stream"),
+            name: clampStr(a?.name, 200) || "file",
+            path: clampStr(a?.path, 500),
+            contentType: clampStr(a?.contentType, 100) || "application/octet-stream",
             uploadedById: request.auth.uid,
             uploadedAt: Date.now(),
           }));
+          if (update.attachments.some(a => !a.path)) {
+            throw new HttpsError("invalid-argument", "Attachment path is required.");
+          }
           history.push(buildHistoryEntry(actor, role, "update_attachments", "attachments", null, `${update.attachments.length} file(s)`));
         } else if (field === "customer" && patch[field] && typeof patch[field] === "object") {
           update.customer = {
-            name: String(patch[field].name || ""),
-            phone: String(patch[field].phone || ""),
-            address: String(patch[field].address || ""),
+            name: clampStr(patch[field].name, 200),
+            phone: clampStr(patch[field].phone, 40),
+            address: clampStr(patch[field].address, 500),
           };
           history.push(buildHistoryEntry(actor, role, "update_customer", "customer", null, update.customer.name));
+        } else if (field === "quantity") {
+          const q = clampInt(patch[field], 1, 1000000);
+          if (q == null) {
+            throw new HttpsError("invalid-argument", "Quantity must be a number between 1 and 1,000,000.");
+          }
+          update.quantity = q;
+          history.push(buildHistoryEntry(actor, role, "update_field", field, before[field] ?? null, q));
         } else if (field !== "estimatedCompletionDate") {
-          update[field] = patch[field];
-          history.push(buildHistoryEntry(actor, role, "update_field", field, before[field] ?? null, patch[field]));
+          // orderNumber, supplierId, productRef — clamp to bounded strings.
+          update[field] = clampStr(patch[field], field === "supplierId" ? 100 : field === "orderNumber" ? 50 : 200);
+          history.push(buildHistoryEntry(actor, role, "update_field", field, before[field] ?? null, update[field]));
         }
       }
     } else {

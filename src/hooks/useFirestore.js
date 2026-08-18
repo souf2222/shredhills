@@ -16,6 +16,15 @@ function toMs(val) {
   return val;
 }
 
+// Sanity-check a punch timestamp: must be a finite number, not in the future
+// (beyond 1 minute tolerance), and not older than 1 year ago.
+const ONE_MIN = 60_000;
+const ONE_YEAR = 365 * 24 * 60 * 60 * 1000;
+function isValidPunchTs(ts) {
+  return typeof ts === "number" && Number.isFinite(ts) &&
+    ts <= Date.now() + ONE_MIN && ts >= Date.now() - ONE_YEAR;
+}
+
 function normalizeEvent(doc) {
   const d = doc.data();
   return {
@@ -218,12 +227,19 @@ export function useFirestore(authUser, auditActor) {
   const getPunchSessions = (empId) => punches[empId] || [];
 
   const addPunchSession = async (empId, session) => {
+    // Validate the incoming session before touching Firestore.
+    if (!session || typeof session.id !== "string" || !session.id) {
+      throw new Error("INVALID_SESSION");
+    }
+    if (!isValidPunchTs(session.punchIn)) {
+      throw new Error("INVALID_TIMESTAMP");
+    }
     try {
       await runTransaction(db, async (transaction) => {
         const punchRef = doc(db, "punches", empId);
         const punchDoc = await transaction.get(punchRef);
         let serverSessions = [];
-        
+
         if (punchDoc.exists()) {
           const data = punchDoc.data();
           serverSessions = Array.isArray(data.sessions) ? data.sessions.map(s => ({
@@ -231,18 +247,30 @@ export function useFirestore(authUser, auditActor) {
             punchIn: toMs(s.punchIn),
             punchOut: s.punchOut ? toMs(s.punchOut) : null
           })) : [];
-          
-          // Check for active session today (guard against double punch-in)
+
           const todayStart = dayStart(Date.now());
-          const hasActiveToday = serverSessions.some(s => 
+
+          // Auto-close orphaned sessions from previous days (user forgot to
+          // punch out). The session is closed at the end of its start day so
+          // the worked time stays attributed to the correct day.
+          serverSessions = serverSessions.map(s => {
+            if (!s.punchOut && dayStart(toMs(s.punchIn)) !== todayStart) {
+              const orphanDayEnd = dayStart(toMs(s.punchIn)) + 24 * 60 * 60 * 1000 - 1;
+              return { ...s, punchOut: Math.min(orphanDayEnd, Date.now()) };
+            }
+            return s;
+          });
+
+          // Check for active session today (guard against double punch-in)
+          const hasActiveToday = serverSessions.some(s =>
             !s.punchOut && dayStart(toMs(s.punchIn)) === todayStart
           );
-          
+
           if (hasActiveToday) {
             throw new Error("ALREADY_ACTIVE_SESSION");
           }
         }
-        
+
         transaction.set(punchRef, { sessions: [...serverSessions, session] }, { merge: true });
       });
     } catch (error) {
@@ -254,26 +282,40 @@ export function useFirestore(authUser, auditActor) {
   };
 
   const updatePunchSession = async (empId, updatedSession) => {
+    // Validate the updated session before writing.
+    if (!updatedSession || typeof updatedSession.id !== "string" || !updatedSession.id) {
+      throw new Error("INVALID_SESSION");
+    }
+    if (!isValidPunchTs(updatedSession.punchIn)) {
+      throw new Error("INVALID_TIMESTAMP");
+    }
+    if (updatedSession.punchOut != null) {
+      if (!isValidPunchTs(updatedSession.punchOut) || updatedSession.punchOut <= updatedSession.punchIn) {
+        throw new Error("INVALID_TIMESTAMP");
+      }
+    }
+
     await runTransaction(db, async (transaction) => {
       const punchRef = doc(db, "punches", empId);
       const punchDoc = await transaction.get(punchRef);
-      
+
       if (!punchDoc.exists()) return;
-      
+
       const data = punchDoc.data();
       const serverSessions = Array.isArray(data.sessions) ? data.sessions.map(s => ({
         ...s,
         punchIn: toMs(s.punchIn),
         punchOut: s.punchOut ? toMs(s.punchOut) : null
       })) : [];
-      
-      const updatedSessions = serverSessions.map(s => 
+
+      const exists = serverSessions.some(s => s.id === updatedSession.id);
+      if (!exists) return;
+
+      const updatedSessions = serverSessions.map(s =>
         s.id === updatedSession.id ? updatedSession : s
       );
-      
-      if (updatedSessions.some(s => s.id === updatedSession.id)) {
-        transaction.set(punchRef, { sessions: updatedSessions }, { merge: true });
-      }
+
+      transaction.set(punchRef, { sessions: updatedSessions }, { merge: true });
     });
   };
 
@@ -281,21 +323,25 @@ export function useFirestore(authUser, auditActor) {
     await runTransaction(db, async (transaction) => {
       const punchRef = doc(db, "punches", empId);
       const punchDoc = await transaction.get(punchRef);
-      
+
       if (!punchDoc.exists()) return;
-      
+
       const data = punchDoc.data();
       const serverSessions = Array.isArray(data.sessions) ? data.sessions.map(s => ({
         ...s,
         punchIn: toMs(s.punchIn),
         punchOut: s.punchOut ? toMs(s.punchOut) : null
       })) : [];
-      
-      const updatedSessions = serverSessions.map(s => 
-        s.id === sessionId ? { ...s, punchOut: Date.now() } : s
-      );
-      
-      if (updatedSessions.some(s => s.id === sessionId)) {
+
+      const now = Date.now();
+      const updatedSessions = serverSessions.map(s => {
+        if (s.id !== sessionId || s.punchOut) return s;
+        // Guard against clock skew: punchOut must be strictly after punchIn.
+        const punchOut = now > s.punchIn ? now : s.punchIn + 1000;
+        return { ...s, punchOut };
+      });
+
+      if (updatedSessions.some(s => s.id === sessionId && s.punchOut)) {
         transaction.set(punchRef, { sessions: updatedSessions }, { merge: true });
       }
     });

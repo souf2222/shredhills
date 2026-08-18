@@ -36,8 +36,13 @@ export function DashboardStatStrip({ events, orders, stops, users, punches, user
 
   const punchOut_ = async () => {
     if (activeSess) {
-      await closePunchSession(userProfile.id, activeSess.id);
-      showToast("Pause !");
+      try {
+        await closePunchSession(userProfile.id, activeSess.id);
+        showToast("Pause !");
+      } catch (err) {
+        showToast("Erreur lors du punch out");
+        console.error("Punch out error:", err);
+      }
     }
   };
 
