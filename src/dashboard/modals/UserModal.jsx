@@ -124,17 +124,7 @@ export function UserModal({ user, suppliers, onSave, onCreate, onDelete, onClose
         {!isNew && <p style={{ fontSize:12, color:"#8E8E93", marginBottom:20, fontFamily:"monospace" }}>{user.email}</p>}
 
         <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-          {isNew && (
-            <div>
-              <label className="lbl">Modèle rapide (optionnel)</label>
-              <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-                <button className="btn btn-outline" style={{ fontSize:12, padding:"6px 12px" }} onClick={() => applyTemplate("admin")}>⚙️ Admin</button>
-                <button className="btn btn-outline" style={{ fontSize:12, padding:"6px 12px" }} onClick={() => applyTemplate("accountant")}>📊 Comptable</button>
-                <button className="btn btn-outline" style={{ fontSize:12, padding:"6px 12px" }} onClick={() => applyTemplate("employee")}>👷 Employé</button>
-                <button className="btn btn-outline" style={{ fontSize:12, padding:"6px 12px" }} onClick={() => applyTemplate("driver")}>🚐 Livreur</button>
-              </div>
-            </div>
-          )}
+
 
           <div><label className="lbl">Nom complet</label><input className="inp" value={form.displayName} onChange={e => set("displayName", e.target.value)}/></div>
 
