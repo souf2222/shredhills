@@ -70,7 +70,6 @@ export function PunchSection({ userId, punches, updatePunchSession, deletePunchS
   };
 
   const handleDeletePunch = async () => {
-    if (!window.confirm("Supprimer cette session de pointage ?")) return;
     try {
       await deletePunchSession(userId, editPunch.id);
       setEditPunch(null);

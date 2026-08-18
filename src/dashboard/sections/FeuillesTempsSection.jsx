@@ -40,7 +40,6 @@ export function FeuillesTempsSection({ users, punches, dateRange, setDateRange, 
   };
 
   const handleDeletePunch = async () => {
-    if (!window.confirm("Supprimer cette session de pointage ?")) return;
     try {
       await deletePunchSession(editUserId, editPunch.id);
       setEditPunch(null);
