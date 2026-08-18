@@ -15,3 +15,4 @@ fix_pages.py
 patch-*.js
 test-*.md
 test_app.py
+service-account.json
