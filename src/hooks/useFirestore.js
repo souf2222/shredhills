@@ -1,10 +1,10 @@
 // src/hooks/useFirestore.js
 import { useState, useEffect } from "react";
 import {
-  collection, doc, onSnapshot, setDoc, updateDoc,
-  deleteDoc, addDoc, serverTimestamp, query, orderBy
+  collection, doc, onSnapshot, serverTimestamp, query, orderBy, limit, writeBatch
 } from "firebase/firestore";
 import { db, uploadExpensePhoto, deleteStorageFile } from "../firebase";
+import { buildAuditEntry } from "../utils/audit";
 
 // Firestore Timestamps can come back as objects (with .toMillis() or .seconds).
 // We normalize them to plain numbers so every consumer can do arithmetic safely.
@@ -26,7 +26,7 @@ function normalizeEvent(doc) {
   };
 }
 
-export function useFirestore(authUser) {
+export function useFirestore(authUser, auditActor) {
   const [users,       setUsers]       = useState([]);
   const [orders,      setOrders]      = useState([]);
   const [stops,       setStops]       = useState([]);
@@ -36,9 +36,11 @@ export function useFirestore(authUser) {
   const [categories,  setCategories]  = useState([]);
   const [contacts,    setContacts]    = useState([]);
   const [acquisitions, setAcquisitions] = useState([]);
+  const [auditLogs,   setAuditLogs]   = useState([]);
   const [loading,     setLoading]     = useState(true);
 
   const authUid = authUser?.uid || null;
+  const canViewAudit = auditActor?.role === "admin" || !!auditActor?.permissions?.canManageUsers;
 
   useEffect(() => {
     // Don't subscribe until the user is authenticated. Firestore rules require
@@ -103,62 +105,125 @@ export function useFirestore(authUser) {
     return () => unsubs.forEach(u => u());
   }, [authUid]);
 
+  useEffect(() => {
+    if (!authUid || !canViewAudit) {
+      setAuditLogs([]);
+      return;
+    }
+
+    return onSnapshot(
+      query(collection(db, "auditLogs"), orderBy("createdAt", "desc"), limit(100)),
+      snap => setAuditLogs(snap.docs.map(d => ({ ...d.data(), id: d.id }))),
+      err => console.error("Firestore listener error (audit logs):", err)
+    );
+  }, [authUid, canViewAudit]);
+
+  const addAudit = (batch, action, collectionName, entityId, before, after) => {
+    const entry = buildAuditEntry({ action, collectionName, entityId, actor: auditActor, before, after });
+    batch.set(doc(collection(db, "auditLogs")), { ...entry, createdAt: serverTimestamp() });
+  };
+
+  const createAudited = async (collectionName, data) => {
+    const ref = doc(collection(db, collectionName));
+    const batch = writeBatch(db);
+    batch.set(ref, data);
+    addAudit(batch, "create", collectionName, ref.id, null, data);
+    await batch.commit();
+    return ref;
+  };
+
+  const setAudited = async (collectionName, id, data, before = {}, merge = true) => {
+    const batch = writeBatch(db);
+    if (merge) batch.set(doc(db, collectionName, id), data, { merge: true });
+    else batch.set(doc(db, collectionName, id), data);
+    addAudit(batch, "update", collectionName, id, before, merge ? { ...before, ...data } : data);
+    await batch.commit();
+  };
+
+  const updateAudited = async (collectionName, id, data, before = {}) => {
+    const batch = writeBatch(db);
+    batch.update(doc(db, collectionName, id), data);
+    addAudit(batch, "update", collectionName, id, before, { ...before, ...data });
+    await batch.commit();
+  };
+
+  const deleteAudited = async (collectionName, id, before = {}) => {
+    const batch = writeBatch(db);
+    batch.delete(doc(db, collectionName, id));
+    addAudit(batch, "delete", collectionName, id, before, null);
+    await batch.commit();
+  };
+
+  const itemById = (items, id) => items.find(item => item.id === id) || {};
+
   // USERS
-  const saveUser   = (user) => setDoc(doc(db, "users", user.id), user);
-  const updateUser = (user) => setDoc(doc(db, "users", user.id), user, { merge: true });
-  const deleteUser = (id)   => deleteDoc(doc(db, "users", id));
+  const saveUser = (user) => {
+    const { id, ...data } = user;
+    const before = itemById(users, id);
+    if (before.id) return setAudited("users", id, data, before);
+    const batch = writeBatch(db);
+    const created = { ...data, createdAt: serverTimestamp() };
+    batch.set(doc(db, "users", id), created);
+    addAudit(batch, "create", "users", id, null, created);
+    return batch.commit();
+  };
+  const updateUser = (user) => {
+    const { id, ...data } = user;
+    return setAudited("users", id, data, itemById(users, id));
+  };
+  const deleteUser = (id) => deleteAudited("users", id, itemById(users, id));
 
   // ORDERS
-  const addOrder    = (order) => addDoc(collection(db, "orders"), { ...order, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-  const updateOrder = (id, data) => updateDoc(doc(db, "orders", id), { ...data, updatedAt: serverTimestamp() });
-  const deleteOrder = (id) => deleteDoc(doc(db, "orders", id));
+  const addOrder = (order) => createAudited("orders", { ...order, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  const updateOrder = (id, data) => updateAudited("orders", id, { ...data, updatedAt: serverTimestamp() }, itemById(orders, id));
+  const deleteOrder = (id) => deleteAudited("orders", id, itemById(orders, id));
 
   // STOPS
-  const addStop    = (stop) => addDoc(collection(db, "stops"), { ...stop, createdAt: serverTimestamp() });
-  const updateStop = (id, data) => updateDoc(doc(db, "stops", id), data);
-  const deleteStop = (id) => deleteDoc(doc(db, "stops", id));
+  const addStop = (stop) => createAudited("stops", { ...stop, createdAt: serverTimestamp() });
+  const updateStop = (id, data) => updateAudited("stops", id, data, itemById(stops, id));
+  const deleteStop = (id) => deleteAudited("stops", id, itemById(stops, id));
 
   // PUNCHES
   const getPunchSessions = (empId) => punches[empId] || [];
 
   const addPunchSession = async (empId, session) => {
     const current = getPunchSessions(empId);
-    await setDoc(doc(db, "punches", empId), { sessions: [...current, session] }, { merge: true });
+    await setAudited("punches", empId, { sessions: [...current, session] }, { id: empId, sessions: current });
   };
 
   const updatePunchSession = async (empId, updatedSession) => {
     const current = getPunchSessions(empId);
-    await setDoc(doc(db, "punches", empId), {
+    await setAudited("punches", empId, {
       sessions: current.map(s => s.id === updatedSession.id ? updatedSession : s)
-    });
+    }, { id: empId, sessions: current }, false);
   };
 
   const closePunchSession = async (empId, sessionId) => {
     const current = getPunchSessions(empId);
-    await setDoc(doc(db, "punches", empId), {
+    await setAudited("punches", empId, {
       sessions: current.map(s => s.id === sessionId ? { ...s, punchOut: Date.now() } : s)
-    });
+    }, { id: empId, sessions: current }, false);
   };
 
   const deletePunchSession = async (empId, sessionId) => {
     const current = getPunchSessions(empId);
-    await setDoc(doc(db, "punches", empId), {
+    await setAudited("punches", empId, {
       sessions: current.filter(s => s.id !== sessionId)
-    });
+    }, { id: empId, sessions: current }, false);
   };
 
   // EXPENSES (formerly PURCHASES)
   // Creates an expense doc, then uploads the receipt photo if provided
   // and patches the doc with { photoUrl, photoPath }. Returns the expense id.
   const addExpense = async (p, photoFile = null) => {
-    const ref = await addDoc(collection(db, "purchases"), {
+    const ref = await createAudited("purchases", {
       ...p,
       submittedAt: serverTimestamp(),
     });
     if (photoFile) {
       try {
         const { url, path } = await uploadExpensePhoto(photoFile, ref.id);
-        await updateDoc(ref, { photoUrl: url, photoPath: path });
+        await updateAudited("purchases", ref.id, { photoUrl: url, photoPath: path }, { ...p, id: ref.id });
       } catch (err) {
         console.error("Upload facture échoué :", err);
         throw err;
@@ -167,92 +232,92 @@ export function useFirestore(authUser) {
     return ref.id;
   };
 
-  const updateExpense = (id, data) => updateDoc(doc(db, "purchases", id), data);
+  const updateExpense = (id, data) => updateAudited("purchases", id, data, itemById(purchases, id));
 
   const approveExpense = (id, decidedBy, decidedByName) =>
-    updateDoc(doc(db, "purchases", id), {
+    updateAudited("purchases", id, {
       status: "approved",
       approvedAt: Date.now(),
       decidedBy: decidedBy || null,
       decidedByName: decidedByName || null,
-    });
+    }, itemById(purchases, id));
 
   const refuseExpense = (id, reason, decidedBy, decidedByName) =>
-    updateDoc(doc(db, "purchases", id), {
+    updateAudited("purchases", id, {
       status: "refused",
       refusedAt: Date.now(),
       refusedReason: reason || "",
       decidedBy: decidedBy || null,
       decidedByName: decidedByName || null,
-    });
+    }, itemById(purchases, id));
 
   const deleteExpense = async (id, photoPath = null) => {
     await deleteStorageFile(photoPath);
-    await deleteDoc(doc(db, "purchases", id));
+    await deleteAudited("purchases", id, itemById(purchases, id));
   };
 
   // EXPENSE CATEGORIES (editable CRUD)
-  const addCategory = (cat) => addDoc(collection(db, "purchaseCategories"), {
+  const addCategory = (cat) => createAudited("purchaseCategories", {
     label: cat.label || "",
     emoji: cat.emoji || "📎",
     color: cat.color || "#8E8E93",
     order: typeof cat.order === "number" ? cat.order : 999,
     createdAt: serverTimestamp(),
   });
-  const updateCategory = (id, data) => updateDoc(doc(db, "purchaseCategories", id), data);
-  const deleteCategory = (id) => deleteDoc(doc(db, "purchaseCategories", id));
+  const updateCategory = (id, data) => updateAudited("purchaseCategories", id, data, itemById(categories, id));
+  const deleteCategory = (id) => deleteAudited("purchaseCategories", id, itemById(categories, id));
 
   // EVENTS
-  const addEvent = (event) => addDoc(collection(db, "events"), {
+  const addEvent = (event) => createAudited("events", {
     ...event, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
   });
-  const updateEvent = (id, data) => updateDoc(doc(db, "events", id), { ...data, updatedAt: serverTimestamp() });
-  const deleteEvent = (id) => deleteDoc(doc(db, "events", id));
+  const updateEvent = (id, data) => updateAudited("events", id, { ...data, updatedAt: serverTimestamp() }, itemById(events, id));
+  const deleteEvent = (id) => deleteAudited("events", id, itemById(events, id));
 
   // CONTACTS
-  const addContact    = (contact) => addDoc(collection(db, "contacts"), { ...contact, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-  const updateContact = (id, data) => updateDoc(doc(db, "contacts", id), { ...data, updatedAt: serverTimestamp() });
-  const deleteContact = (id) => deleteDoc(doc(db, "contacts", id));
+  const addContact = (contact) => createAudited("contacts", { ...contact, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  const updateContact = (id, data) => updateAudited("contacts", id, { ...data, updatedAt: serverTimestamp() }, itemById(contacts, id));
+  const deleteContact = (id) => deleteAudited("contacts", id, itemById(contacts, id));
 
   // ACQUISITIONS
-  const addAcquisition = (acq) => addDoc(collection(db, "acquisitions"), {
+  const addAcquisition = (acq) => createAudited("acquisitions", {
     ...acq,
     submittedAt: serverTimestamp(),
   });
-  const updateAcquisition = (id, data) => updateDoc(doc(db, "acquisitions", id), data);
-  const deleteAcquisition = (id) => deleteDoc(doc(db, "acquisitions", id));
+  const updateAcquisition = (id, data) => updateAudited("acquisitions", id, data, itemById(acquisitions, id));
+  const deleteAcquisition = (id) => deleteAudited("acquisitions", id, itemById(acquisitions, id));
 
   const approveAcquisition = (id, decidedBy, decidedByName) =>
-    updateDoc(doc(db, "acquisitions", id), {
+    updateAudited("acquisitions", id, {
       status: "approved",
       decidedAt: Date.now(),
       decidedBy: decidedBy || null,
       decidedByName: decidedByName || null,
-    });
+    }, itemById(acquisitions, id));
 
   const refuseAcquisition = (id, reason, decidedBy, decidedByName) =>
-    updateDoc(doc(db, "acquisitions", id), {
+    updateAudited("acquisitions", id, {
       status: "refused",
       decidedAt: Date.now(),
       refusedReason: reason || "",
       decidedBy: decidedBy || null,
       decidedByName: decidedByName || null,
-    });
+    }, itemById(acquisitions, id));
 
   const orderAcquisition = (id) =>
-    updateDoc(doc(db, "acquisitions", id), {
+    updateAudited("acquisitions", id, {
       status: "ordered",
       orderedAt: Date.now(),
-    });
+    }, itemById(acquisitions, id));
 
   const receiveAcquisition = (id) =>
-    updateDoc(doc(db, "acquisitions", id), {
+    updateAudited("acquisitions", id, {
       status: "received",
       receivedAt: Date.now(),
-    });
+    }, itemById(acquisitions, id));
 
   return {
-    users, orders, stops, punches, purchases, events, categories, contacts, acquisitions, loading,
+    users, orders, stops, punches, purchases, events, categories, contacts, acquisitions, auditLogs, loading,
     saveUser, updateUser, deleteUser,
     addOrder, updateOrder, deleteOrder,
     addStop, updateStop, deleteStop,

@@ -26,6 +26,7 @@ import { FeuillesTempsSection } from "../dashboard/sections/FeuillesTempsSection
 import { PunchSection } from "../components/PunchSection";
 import { MesAcquisitionsSection } from "../dashboard/sections/MesAcquisitionsSection";
 import { AcquisitionsAdminSection } from "../dashboard/sections/AcquisitionsAdminSection";
+import { AuditTrailSection } from "../dashboard/sections/AuditTrailSection";
 
 import { UserModal } from "../dashboard/modals/UserModal";
 import { OrderModal } from "../dashboard/modals/OrderModal";
@@ -42,10 +43,10 @@ import { todayStr, toDateKey, DAY, isEventPast } from "../utils/helpers";
 
 export function DashboardPage() {
   const { userProfile, can, firebaseUser } = useAuth();
-  const fsData = useFirestore(firebaseUser);
+  const fsData = useFirestore(firebaseUser, userProfile);
   const {
-    users, orders, stops, punches, purchases, events, categories, contacts, acquisitions,
-    updateUser, deleteUser,
+    users, orders, stops, punches, purchases, events, categories, contacts, acquisitions, auditLogs,
+    saveUser, updateUser, deleteUser,
     addOrder, updateOrder, deleteOrder,
     addStop, updateStop, deleteStop,
     addExpense, updateExpense, approveExpense: fsApproveExpense, refuseExpense: fsRefuseExpense, deleteExpense,
@@ -158,6 +159,7 @@ export function DashboardPage() {
   }
   if (can("canManageUsers")) {
     pushTab("equipe", "👥 Équipe");
+    pushTab("historique", "📜 Historique");
   }
   pushTab("parametres", "⚙️ Paramètres");
 
@@ -172,6 +174,9 @@ export function DashboardPage() {
   const handleSaveUser = async (updated) => {
     await updateUser(updated);
     showToast("Utilisateur mis à jour");
+  };
+  const handleCreateUser = async (user) => {
+    await saveUser(user);
   };
   const handleDeleteUser = async (id) => {
     if (!window.confirm("Supprimer ce compte? (Le compte Firebase Auth reste actif mais son profil est effacé)")) return;
@@ -508,6 +513,10 @@ export function DashboardPage() {
           />
         )}
 
+        {tab === "historique" && can("canManageUsers") && (
+          <AuditTrailSection auditLogs={auditLogs} />
+        )}
+
         {tab === "mes-depenses" && can("canSubmitExpenses") && (
           <ExpensesSubmitView
             purchases={purchases.filter(p => p.empId === userProfile.id)}
@@ -577,7 +586,7 @@ export function DashboardPage() {
 
       {/* ── MODALS ── */}
       {userModal && (
-        <UserModal user={userModal === "new" ? null : userModal} onSave={handleSaveUser} onDelete={handleDeleteUser}
+        <UserModal user={userModal === "new" ? null : userModal} onSave={handleSaveUser} onCreate={handleCreateUser} onDelete={handleDeleteUser}
           onClose={() => setUserModal(null)} currentUserId={userProfile.id} showToast={showToast} />
       )}
 

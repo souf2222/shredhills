@@ -1,11 +1,9 @@
 // src/dashboard/modals/UserModal.jsx
 import { useState } from "react";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../../firebase";
 import { createAuthUserKeepingSession, sendPasswordReset } from "../../firebase";
 import { PERMISSION_LABELS, COLORS } from "../constants";
 
-export function UserModal({ user, onSave, onDelete, onClose, currentUserId, showToast }) {
+export function UserModal({ user, onSave, onCreate, onDelete, onClose, currentUserId, showToast }) {
   const isNew = !user?.id;
   const [form, setForm] = useState(() => user || {
     email:"", password:"", displayName:"",
@@ -72,10 +70,11 @@ export function UserModal({ user, onSave, onDelete, onClose, currentUserId, show
     try {
       if (isNew) {
         const { uid } = await createAuthUserKeepingSession(form.email.trim(), form.password, form.displayName);
-        await setDoc(doc(db, "users", uid), {
+        await onCreate({
+          id: uid,
           email: form.email.trim(), displayName: form.displayName, role: form.role,
           permissions: form.permissions, color: form.color,
-          pin: form.pin || "", createdAt: serverTimestamp(),
+          pin: form.pin || "",
         });
         showToast("✅ Utilisateur créé.");
       } else {
