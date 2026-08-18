@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { useRoute } from "./hooks/useRoute";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { PortalApp } from "./portal/PortalApp";
 import { Logo } from "./components/Logo";
 import "./styles/globals.css";
 //import "./seed"; // exposes window.seedDatabase()
@@ -37,6 +38,10 @@ function AppRouter() {
 
   if (authLoading) return <LoadingScreen/>;
   if (!userProfile) return <LoginPage/>;
+
+  // Suppliers never reach the internal dashboard. The role is the boundary;
+  // the URL segment is cosmetic.
+  if (userProfile.role === "supplier") return <PortalApp/>;
 
   return <DashboardPage/>;
 }

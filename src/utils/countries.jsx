@@ -1,4 +1,4 @@
-// src/utils/countries.js
+// src/utils/countries.jsx
 // Curated country list with circular SVG flag renderers.
 // Each flag is a hand-crafted <svg> clipped to a circle for a consistent
 // lapel-pin look that matches the rest of the UI.

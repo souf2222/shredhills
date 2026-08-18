@@ -14,6 +14,7 @@ import { GestionRoutesSection } from "./GestionRoutesSection";
 import { MesRoutesSection } from "./MesRoutesSection";
 
 import { useRoute } from "../hooks/useRoute";
+import { createManagedUser, updateManagedUser, disableManagedUser, uploadSupplierOrderFile } from "../firebase";
 
 import { DashboardStatStrip } from "../dashboard/sections/DashboardStatStrip";
 import { CommandesSection } from "../dashboard/sections/CommandesSection";
@@ -38,6 +39,9 @@ import { RefuseExpenseModal } from "../dashboard/modals/RefuseExpenseModal";
 import { DeleteExpenseModal } from "../dashboard/modals/DeleteExpenseModal";
 import { AcquisitionModal } from "../dashboard/modals/AcquisitionModal";
 import { RefuseAcquisitionModal } from "../dashboard/modals/RefuseAcquisitionModal";
+import { SupplierOrdersSection } from "../dashboard/sections/SupplierOrdersSection";
+import { SupplierOrderModal } from "../dashboard/modals/SupplierOrderModal";
+import { SupplierOrderDetailModal } from "../dashboard/modals/SupplierOrderDetailModal";
 
 import { todayStr, toDateKey, DAY, isEventPast } from "../utils/helpers";
 
@@ -46,7 +50,7 @@ export function DashboardPage() {
   const fsData = useFirestore(firebaseUser, userProfile);
   const {
     users, orders, stops, punches, purchases, events, categories, contacts, acquisitions, auditLogs,
-    saveUser, updateUser, deleteUser,
+    supplierOrders, suppliers,
     addOrder, updateOrder, deleteOrder,
     addStop, updateStop, deleteStop,
     addExpense, updateExpense, approveExpense: fsApproveExpense, refuseExpense: fsRefuseExpense, deleteExpense,
@@ -57,6 +61,7 @@ export function DashboardPage() {
     addAcquisition, updateAcquisition, deleteAcquisition: fsDeleteAcquisition,
     approveAcquisition: fsApproveAcquisition, refuseAcquisition: fsRefuseAcquisition,
     orderAcquisition: fsOrderAcquisition, receiveAcquisition: fsReceiveAcquisition,
+    addSupplierOrder, updateSupplierOrderDoc, deleteSupplierOrder,
   } = fsData;
 
   const { section, navigate, replace } = useRoute();
@@ -102,6 +107,11 @@ export function DashboardPage() {
   const [refuseAcquisitionModal, setRefuseAcquisitionModal] = useState(null);
   const [deleteAcquisitionConfirm, setDeleteAcquisitionConfirm] = useState(null);
 
+  // Supplier portal modals
+  const [supplierOrderModal, setSupplierOrderModal] = useState(null);
+  const [supplierOrderDetailModal, setSupplierOrderDetailModal] = useState(null);
+  const [deleteSupplierOrderConfirm, setDeleteSupplierOrderConfirm] = useState(null);
+
   const showToast = (m) => setToast(m);
 
   // Derived
@@ -124,6 +134,10 @@ export function DashboardPage() {
   }
   if (can("canManageOrders")) {
     pushTab("commandes", `📦 Commandes${adminActive.length > 0 ? ` (${adminActive.length})` : ""}`);
+  }
+  if (can("canManageSupplierOrders")) {
+    const activeSupplierOrders = supplierOrders.filter(o => !["completed", "cancelled"].includes(o.status)).length;
+    pushTab("commandes-fournisseurs", `🏭 Fournisseurs${activeSupplierOrders > 0 ? ` (${activeSupplierOrders})` : ""}`);
   }
   if (can("canManageContacts")) {
     pushTab("contacts", `📇 Contacts`);
@@ -158,7 +172,7 @@ export function DashboardPage() {
     pushTab("gestion-achats", `📦 Gestion des achats${pendingAcquisitions > 0 ? ` (${pendingAcquisitions})` : ""}`);
   }
   if (can("canManageUsers")) {
-    pushTab("equipe", "👥 Équipe");
+    pushTab("equipe", "👥 Utilisateurs");
     pushTab("historique", "📜 Historique");
   }
   pushTab("parametres", "⚙️ Paramètres");
@@ -172,15 +186,16 @@ export function DashboardPage() {
 
   // --- Event handlers ---
   const handleSaveUser = async (updated) => {
-    await updateUser(updated);
+    await updateManagedUser({ uid: updated.id, ...updated });
     showToast("Utilisateur mis à jour");
   };
   const handleCreateUser = async (user) => {
-    await saveUser(user);
+    await createManagedUser(user);
+    showToast("Utilisateur créé");
   };
   const handleDeleteUser = async (id) => {
-    if (!window.confirm("Supprimer ce compte? (Le compte Firebase Auth reste actif mais son profil est effacé)")) return;
-    try { await deleteUser(id); showToast("Utilisateur supprimé"); setUserModal(null); }
+    if (!window.confirm("Désactiver ce compte? L'accès sera révoqué immédiatement.")) return;
+    try { await disableManagedUser(id); showToast("Utilisateur désactivé"); setUserModal(null); }
     catch(e) { showToast("Erreur: "+e.message); }
   };
 
@@ -482,6 +497,17 @@ export function DashboardPage() {
           />
         )}
 
+        {tab === "commandes-fournisseurs" && can("canManageSupplierOrders") && (
+          <SupplierOrdersSection
+            supplierOrders={supplierOrders}
+            suppliers={suppliers}
+            users={users}
+            onNew={() => setSupplierOrderModal("new")}
+            onSelect={(o) => setSupplierOrderDetailModal(o)}
+            showToast={showToast}
+          />
+        )}
+
         {tab === "contacts" && can("canManageContacts") && (
           <ContactsSection
             contacts={contacts}
@@ -586,7 +612,7 @@ export function DashboardPage() {
 
       {/* ── MODALS ── */}
       {userModal && (
-        <UserModal user={userModal === "new" ? null : userModal} onSave={handleSaveUser} onCreate={handleCreateUser} onDelete={handleDeleteUser}
+        <UserModal user={userModal === "new" ? null : userModal} suppliers={suppliers} onSave={handleSaveUser} onCreate={handleCreateUser} onDelete={handleDeleteUser}
           onClose={() => setUserModal(null)} currentUserId={userProfile.id} showToast={showToast} />
       )}
 
@@ -677,6 +703,63 @@ export function DashboardPage() {
           La demande d'achat pour <strong>{deleteAcquisitionConfirm?.itemName}</strong> sera définitivement supprimée.
         </p>
       </Modal>
+
+      <Modal
+        open={!!deleteSupplierOrderConfirm}
+        onClose={() => setDeleteSupplierOrderConfirm(null)}
+        title="🗑️ Supprimer cette commande fournisseur ?"
+        footer={
+          <>
+            <button className="btn btn-outline" style={{ flex: 1, justifyContent: "center" }} onClick={() => setDeleteSupplierOrderConfirm(null)}>
+              Annuler
+            </button>
+            <button className="btn btn-red" style={{ flex: 1, justifyContent: "center" }} onClick={() => {
+              deleteSupplierOrder(deleteSupplierOrderConfirm.id);
+              setDeleteSupplierOrderConfirm(null);
+              showToast("Commande fournisseur supprimée.");
+            }}>
+              Supprimer
+            </button>
+          </>
+        }
+      >
+        <p style={{ color: "#3A3A3C", lineHeight: 1.5 }}>
+          La commande <strong>{deleteSupplierOrderConfirm?.orderNumber}</strong> et tout son historique seront définitivement supprimés.
+        </p>
+      </Modal>
+
+      {supplierOrderModal && (
+        <SupplierOrderModal
+          order={supplierOrderModal === "new" ? null : supplierOrderModal}
+          suppliers={suppliers}
+          onSave={async (payload) => {
+            if (supplierOrderModal === "new") {
+              await addSupplierOrder(payload);
+              showToast("Commande fournisseur créée.");
+            } else {
+              await updateSupplierOrderDoc(supplierOrderModal.id, payload);
+              showToast("Commande fournisseur mise à jour.");
+            }
+            setSupplierOrderModal(null);
+          }}
+          onUploadLabel={async (file, supplierId, orderId) => {
+            const { path } = await uploadSupplierOrderFile(file, supplierId, orderId || "tmp", "labels");
+            return path;
+          }}
+          onClose={() => setSupplierOrderModal(null)}
+        />
+      )}
+
+      {supplierOrderDetailModal && (
+        <SupplierOrderDetailModal
+          order={supplierOrderDetailModal}
+          suppliers={suppliers}
+          onEdit={(o) => { setSupplierOrderDetailModal(null); setSupplierOrderModal(o); }}
+          onDelete={(o) => { setSupplierOrderDetailModal(null); setDeleteSupplierOrderConfirm(o); }}
+          onClose={() => setSupplierOrderDetailModal(null)}
+          showToast={showToast}
+        />
+      )}
 
       <PhotoLightbox url={lightboxUrl} alt="Facture" onClose={() => setLightboxUrl(null)} />
 

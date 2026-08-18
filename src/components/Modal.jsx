@@ -19,7 +19,8 @@ export function Modal({ open, onClose, title, children, maxWidth = 520, footer =
       className="overlay"
       onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
     >
-      <div className="sheet" style={{ maxWidth }}>
+      <div className="sheet" style={{ maxWidth, position: "relative" }}>
+        <button onClick={() => onClose?.()} aria-label="Fermer" style={{ position: "absolute", top: 10, right: 12, background: "transparent", border: "none", fontSize: 22, lineHeight: 1, color: "#8E8E93", cursor: "pointer", fontFamily: "inherit", padding: "2px 6px", borderRadius: 6, zIndex: 2 }}>✕</button>
         <div className="handle" />
         {title && (
           <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20 }}>

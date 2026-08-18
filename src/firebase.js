@@ -4,13 +4,11 @@
 // AUTHENTICATION: Email/Password (Firebase handles hashing)
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { initializeApp, deleteApp } from "firebase/app";
+import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
   signOut, 
-  onAuthStateChanged,
   updateProfile,
   updatePassword,
   verifyBeforeUpdateEmail,
@@ -20,78 +18,42 @@ import {
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-
+import { getFunctions, httpsCallable } from "firebase/functions";
 const requiredEnv = (name) => {
-  const value = process.env[name];
+  const value = import.meta.env[name] || import.meta.env[name.replace("VITE_", "REACT_APP_")];
   if (!value) throw new Error(`Missing environment variable: ${name}`);
   return value;
 };
 
 const firebaseConfig = {
-  apiKey:            requiredEnv("REACT_APP_FIREBASE_API_KEY"),
-  authDomain:        requiredEnv("REACT_APP_FIREBASE_AUTH_DOMAIN"),
-  projectId:         requiredEnv("REACT_APP_FIREBASE_PROJECT_ID"),
-  storageBucket:     requiredEnv("REACT_APP_FIREBASE_STORAGE_BUCKET"),
-  messagingSenderId: requiredEnv("REACT_APP_FIREBASE_MESSAGING_SENDER_ID"),
-  appId:             requiredEnv("REACT_APP_FIREBASE_APP_ID")
+  apiKey:            requiredEnv("VITE_FIREBASE_API_KEY"),
+  authDomain:        requiredEnv("VITE_FIREBASE_AUTH_DOMAIN"),
+  projectId:         requiredEnv("VITE_FIREBASE_PROJECT_ID"),
+  storageBucket:     requiredEnv("VITE_FIREBASE_STORAGE_BUCKET"),
+  messagingSenderId: requiredEnv("VITE_FIREBASE_MESSAGING_SENDER_ID"),
+  appId:             requiredEnv("VITE_FIREBASE_APP_ID")
 };
 
 const app     = initializeApp(firebaseConfig);
 export const auth    = getAuth(app);
-export const db      = getFirestore(app, "prod");
+export const db      = getFirestore(app, requiredEnv("VITE_FIREBASE_DB"));
 export const storage = getStorage(app);
+const functions = getFunctions(app);
+
+// The Firestore database this build connects to. Cloud Functions are
+// multi-database aware and receive this value in every callable payload so
+// they operate on the same DB the client is reading from. A supplier account
+// created in prod therefore has its profile written to `prod`, never to
+// `dev-db`, and vice versa.
+export const currentDatabaseId = requiredEnv("VITE_FIREBASE_DB");
 
 export const loginWithEmail = (email, password) => {
   return signInWithEmailAndPassword(auth, email, password);
 };
 
-export const registerWithEmail = async (email, password, displayName) => {
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  if (displayName) {
-    await updateProfile(userCredential.user, { displayName });
-  }
-  return userCredential;
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ADMIN USER PROVISIONING
-//
-// Why this exists:
-//   `createUserWithEmailAndPassword` ALWAYS signs the new user in on the
-//   Auth instance it's called against. If we used the main app's auth, the
-//   admin doing the provisioning would be silently logged out and replaced
-//   by the freshly created (low-privilege) user.
-//
-// How it works:
-//   We spin up a *secondary* Firebase app instance with the same config but
-//   a unique name. It has its own isolated Auth state, so creating a user
-//   there leaves the primary app's session (and the admin's identity) intact.
-//   We sign out and tear the secondary app down right after to free resources.
-//
-// The proper long-term solution is to do this server-side via the Admin SDK
-// (no auto sign-in there), but this client-only workaround is solid enough
-// for an admin UI.
-// ─────────────────────────────────────────────────────────────────────────────
-export const createAuthUserKeepingSession = async (email, password, displayName) => {
-  // Unique name so concurrent calls don't collide.
-  const tempName = `provisioner-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const tempApp  = initializeApp(firebaseConfig, tempName);
-  const tempAuth = getAuth(tempApp);
-
-  try {
-    const cred = await createUserWithEmailAndPassword(tempAuth, email, password);
-    if (displayName) {
-      await updateProfile(cred.user, { displayName });
-    }
-    // Capture the uid before we tear the temp instance down.
-    const uid = cred.user.uid;
-    return { uid, email: cred.user.email };
-  } finally {
-    // Best-effort cleanup. Errors here aren't actionable.
-    try { await signOut(tempAuth); } catch {}
-    try { await deleteApp(tempApp); } catch {}
-  }
-};
+export const createManagedUser = (data) => httpsCallable(functions, "createManagedUser")({ databaseId: currentDatabaseId, ...data });
+export const updateManagedUser = (data) => httpsCallable(functions, "updateManagedUser")({ databaseId: currentDatabaseId, ...data });
+export const disableManagedUser = (uid) => httpsCallable(functions, "disableManagedUser")({ databaseId: currentDatabaseId, uid });
 
 export const logout = () => signOut(auth);
 
@@ -127,13 +89,15 @@ export const sendPasswordReset = (email) => sendPasswordResetEmail(auth, email);
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Upload a purchase receipt photo to Storage under purchases/{purchaseId}/.
+ * Upload a purchase receipt photo to a submitter-owned Storage path.
  * Returns { url, path } so the caller can store both on the Firestore doc.
  */
 export const uploadExpensePhoto = async (file, expenseId) => {
   if (!file || !expenseId) throw new Error("Fichier ou ID manquant.");
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error("Utilisateur non connecté.");
   const ext = (file.name?.split(".").pop() || "jpg").toLowerCase();
-  const path = `purchases/${expenseId}/${Date.now()}.${ext}`;
+  const path = `purchases/${uid}/${expenseId}/${Date.now()}.${ext}`;
   const sref = ref(storage, path);
   await uploadBytes(sref, file, { contentType: file.type || "image/jpeg" });
   const url = await getDownloadURL(sref);
@@ -154,5 +118,38 @@ export const deleteStorageFile = async (path) => {
   }
 };
 
-export { onAuthStateChanged, updateProfile };
+// ─────────────────────────────────────────────────────────────────────────────
+// SUPPLIER PORTAL STORAGE HELPERS
+// Paths are always keyed by the supplier's id so Storage rules can authorize
+// downloads via the supplierId custom claim (Storage rules cannot read
+// Firestore). We never persist a long-lived getDownloadURL — it is resolved at
+// view time so rules are evaluated on each request.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Upload a supplier order file (shipping label or attachment) for an admin.
+ * Returns { path } only — the caller stores the path, not a download URL.
+ */
+export const uploadSupplierOrderFile = async (file, supplierId, orderId, category = "labels") => {
+  if (!file || !supplierId || !orderId) throw new Error("file, supplierId and orderId are required.");
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error("You must be signed in.");
+  const ext = (file.name?.split(".").pop() || "pdf").toLowerCase();
+  const folder = category === "attachments" ? "attachments" : "labels";
+  const path = `supplierOrders/${supplierId}/${orderId}/${folder}/${Date.now()}.${ext}`;
+  const sref = ref(storage, path);
+  await uploadBytes(sref, file, { contentType: file.type || "application/pdf" });
+  return { path };
+};
+
+/** Resolve a short-lived download URL for a stored supplier file path. */
+export const resolveStorageUrl = async (path) => {
+  if (!path) return null;
+  return getDownloadURL(ref(storage, path));
+};
+
+// Supplier portal callable.
+export const updateSupplierOrder = (data) => httpsCallable(functions, "updateSupplierOrder")({ databaseId: currentDatabaseId, ...data });
+
+export { updateProfile };
 export default app;

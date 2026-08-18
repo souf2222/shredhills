@@ -1,8 +1,9 @@
 // src/contexts/AuthContext.jsx
 import { createContext, useContext, useState, useEffect } from "react";
-import { auth, onAuthStateChanged, loginWithEmail, logout as firebaseLogout } from "../firebase";
+import { auth, loginWithEmail, logout as firebaseLogout } from "../firebase";
 import { db } from "../firebase";
 import { doc, onSnapshot } from "firebase/firestore";
+import { onIdTokenChanged } from "firebase/auth";
 
 const AuthContext = createContext(null);
 
@@ -12,27 +13,37 @@ export function AuthProvider({ children }) {
   const [authLoading,  setAuthLoading]  = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (fbUser) => {
+    let profileUnsub = () => {};
+    const unsub = onIdTokenChanged(auth, async (fbUser) => {
+      profileUnsub();
       setFirebaseUser(fbUser);
       if (!fbUser) {
         setUserProfile(null);
         setAuthLoading(false);
         return;
       }
-      // Listen to profile in Firestore in real-time
+      const token = await fbUser.getIdTokenResult();
+      const claims = {
+        role: token.claims.role,
+        permissions: token.claims.permissions || {},
+        supplierId: token.claims.supplierId || null,
+      };
+      // Profiles contain display data only. Authorization always comes from
+      // Firebase Auth custom claims, which clients cannot modify.
       const ref = doc(db, "users", fbUser.uid);
-      const profileUnsub = onSnapshot(ref, (snap) => {
+      profileUnsub = onSnapshot(ref, (snap) => {
         if (snap.exists()) {
-          setUserProfile({ ...snap.data(), id: snap.id });
+          setUserProfile({ ...snap.data(), ...claims, id: snap.id });
         } else {
           setUserProfile(null);
         }
         setAuthLoading(false);
       }, () => { setAuthLoading(false); });
-
-      return () => profileUnsub();
     });
-    return () => unsub();
+    return () => {
+      profileUnsub();
+      unsub();
+    };
   }, []);
 
   const login = async (email, password) => {

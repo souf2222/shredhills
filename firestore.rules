@@ -1,43 +1,145 @@
-// firestore.rules
-// Paste these rules into Firebase Console → Firestore Database → Rules
-//
-// Policy : the app is an internal tool; every authenticated user is trusted
-// read/write on business collections. Fine-grained authorization is enforced
-// in the React layer (`AuthContext.can(...)` / `isAdmin()` / `hasJob(...)`).
-// If you later need to lock this down server-side (recommended once the team
-// grows), start by restricting `users` writes to admins and `purchases`
-// decisions to accountants.
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function canManageUsers() {
-      return request.auth != null &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin" ||
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.canManageUsers == true);
+    function signedIn() {
+      return request.auth != null;
     }
 
-    // Known collections used by the app. Only signed-in users may read/write.
-    match /users/{uid}                  { allow read, write: if request.auth != null; }
-    match /contacts/{id}                { allow read, write: if request.auth != null; }
-    match /orders/{id}                  { allow read, write: if request.auth != null; }
-    match /stops/{id}                   { allow read, write: if request.auth != null; }
-    match /punches/{uid}                { allow read, write: if request.auth != null; }
-    match /purchases/{id}               { allow read, write: if request.auth != null; }
-    match /events/{id}                  { allow read, write: if request.auth != null; }
-    match /purchaseCategories/{id}      { allow read, write: if request.auth != null; }
+    function isAdmin() {
+      return signedIn() && request.auth.token.role == "admin";
+    }
 
-    // Activity history is append-only. It is a client-recorded history, so the
-    // actor ID is tied to the authenticated session but its content is not a
-    // server-verified compliance record.
+    function hasPermission(permission) {
+      return isAdmin() || (
+        signedIn() &&
+        request.auth.token.permissions != null &&
+        request.auth.token.permissions.keys().hasAll([permission]) &&
+        request.auth.token.permissions[permission] == true
+      );
+    }
+
+    function isOwner(field) {
+      return signedIn() && resource.data[field] == request.auth.uid;
+    }
+
+    function isNewOwner(field) {
+      return signedIn() && request.resource.data[field] == request.auth.uid;
+    }
+
+    function isNonSupplier() {
+      return signedIn() && request.auth.token.role != "supplier";
+    }
+
+    // Role and permission fields are display metadata only. Account lifecycle
+    // and authorization claims are managed through trusted Cloud Functions.
+    // Supplier accounts may only read their own profile document.
+    match /users/{uid} {
+      allow read: if signedIn() && (
+        request.auth.token.role != "supplier" || request.auth.uid == uid
+      );
+      allow write: if false;
+    }
+
+    match /contacts/{id} {
+      allow read, write: if hasPermission("canManageContacts");
+    }
+
+    match /orders/{id} {
+      allow read: if hasPermission("canManageOrders") ||
+        (hasPermission("canViewTasks") && isOwner("assignedTo"));
+      allow create, delete: if hasPermission("canManageOrders");
+      allow update: if hasPermission("canManageOrders") || (
+        hasPermission("canViewTasks") &&
+        isOwner("assignedTo") &&
+        request.resource.data.assignedTo == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["status", "startTime", "endTime", "elapsed", "updatedAt"])
+      );
+    }
+
+    match /stops/{id} {
+      allow read: if hasPermission("canManageDeliveries") ||
+        (hasPermission("canViewDeliveries") && isOwner("assignedTo"));
+      allow create, delete: if hasPermission("canManageDeliveries");
+      allow update: if hasPermission("canManageDeliveries") || (
+        hasPermission("canViewDeliveries") &&
+        isOwner("assignedTo") &&
+        request.resource.data.assignedTo == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["status", "completedAt", "deliveryPhoto", "signature", "updatedAt"])
+      );
+    }
+
+    match /punches/{uid} {
+      allow read, write: if hasPermission("canManageReports") ||
+        (hasPermission("canClockIn") && request.auth.uid == uid);
+    }
+
+    match /purchases/{id} {
+      allow read: if hasPermission("canManageExpenses") || isOwner("empId");
+      allow create: if hasPermission("canManageExpenses") || (
+        hasPermission("canSubmitExpenses") &&
+        isNewOwner("empId") &&
+        request.resource.data.status == "pending"
+      );
+      allow update, delete: if hasPermission("canManageExpenses") || (
+        isOwner("empId") &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["photoUrl", "photoPath"])
+      );
+    }
+
+    match /events/{id} {
+      allow read: if hasPermission("canViewEvents") || hasPermission("canManageEvents");
+      allow write: if hasPermission("canManageEvents");
+    }
+
+    match /purchaseCategories/{id} {
+      allow read: if isNonSupplier();
+      allow write: if hasPermission("canManageExpenses");
+    }
+
+    match /acquisitions/{id} {
+      allow read: if hasPermission("canManageAcquisitions") || isOwner("requesterId");
+      allow create: if hasPermission("canManageAcquisitions") || (
+        hasPermission("canSubmitAcquisitions") &&
+        isNewOwner("requesterId") &&
+        request.resource.data.status == "pending"
+      );
+      allow update, delete: if hasPermission("canManageAcquisitions");
+    }
+
+    // Logs are written only by the Admin SDK and cannot be forged by clients.
     match /auditLogs/{id} {
-      allow read: if canManageUsers();
-      allow create: if request.auth != null && request.resource.data.actorId == request.auth.uid;
-      allow update, delete: if false;
+      allow read: if hasPermission("canManageUsers");
+      allow write: if false;
     }
 
-    // Everything else is denied by default — no silent `allow read, write`
-    // wildcard so accidentally-created collections can't be abused.
+    // ── Supplier portal ────────────────────────────────────────────────────
+    // Supplier directory, managed by admins. Suppliers cannot discover the
+    // directory; they only carry their own supplierId in custom claims.
+    match /suppliers/{id} {
+      allow read, write: if hasPermission("canManageSupplierOrders");
+    }
+
+    // Supplier-facing orders. Suppliers can read only the orders assigned to
+    // them and cannot mutate the document directly — every supplier mutation
+    // goes through the `updateSupplierOrder` callable, which validates the
+    // transition, appends to `history`, and writes the real actor to the
+    // audit log.
+    function isSupplierForOrder() {
+      return signedIn() &&
+        request.auth.token.role == "supplier" &&
+        request.auth.token.supplierId != null &&
+        request.auth.token.supplierId != "" &&
+        resource.data.supplierId == request.auth.token.supplierId;
+    }
+
+    match /supplierOrders/{id} {
+      allow read: if hasPermission("canManageSupplierOrders") || isSupplierForOrder();
+      allow write: if hasPermission("canManageSupplierOrders");
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

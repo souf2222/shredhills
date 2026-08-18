@@ -3,17 +3,20 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      # Vite inlines these into the JS bundle at build time, so they must be
+      # passed as build args (not runtime env on the nginx container).
+      args:
+        - VITE_FIREBASE_API_KEY=${VITE_FIREBASE_API_KEY}
+        - VITE_FIREBASE_AUTH_DOMAIN=${VITE_FIREBASE_AUTH_DOMAIN}
+        - VITE_FIREBASE_PROJECT_ID=${VITE_FIREBASE_PROJECT_ID}
+        - VITE_FIREBASE_STORAGE_BUCKET=${VITE_FIREBASE_STORAGE_BUCKET}
+        - VITE_FIREBASE_MESSAGING_SENDER_ID=${VITE_FIREBASE_MESSAGING_SENDER_ID}
+        - VITE_FIREBASE_APP_ID=${VITE_FIREBASE_APP_ID}
+        - VITE_FIREBASE_DB=${VITE_FIREBASE_DB}
     container_name: shredhills-dev
     restart: unless-stopped
     ports:
       - "3010:80"
-    environment:
-      - REACT_APP_FIREBASE_API_KEY=${REACT_APP_FIREBASE_API_KEY}
-      - REACT_APP_FIREBASE_AUTH_DOMAIN=${REACT_APP_FIREBASE_AUTH_DOMAIN}
-      - REACT_APP_FIREBASE_PROJECT_ID=${REACT_APP_FIREBASE_PROJECT_ID}
-      - REACT_APP_FIREBASE_STORAGE_BUCKET=${REACT_APP_FIREBASE_STORAGE_BUCKET}
-      - REACT_APP_FIREBASE_MESSAGING_SENDER_ID=${REACT_APP_FIREBASE_MESSAGING_SENDER_ID}
-      - REACT_APP_FIREBASE_APP_ID=${REACT_APP_FIREBASE_APP_ID}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.shredhills-dev.rule=Host(`${SHREDHILLS_DOMAIN}`)"
@@ -26,4 +29,3 @@ services:
 networks:
   qcav-network1:
     external: true
-

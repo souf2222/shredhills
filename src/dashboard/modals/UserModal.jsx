@@ -1,19 +1,36 @@
 // src/dashboard/modals/UserModal.jsx
 import { useState } from "react";
-import { createAuthUserKeepingSession, sendPasswordReset } from "../../firebase";
+import { sendPasswordReset } from "../../firebase";
 import { PERMISSION_LABELS, COLORS } from "../constants";
 
-export function UserModal({ user, onSave, onCreate, onDelete, onClose, currentUserId, showToast }) {
+export function UserModal({ user, suppliers, onSave, onCreate, onDelete, onClose, currentUserId, showToast }) {
   const isNew = !user?.id;
-  const [form, setForm] = useState(() => user || {
-    email:"", password:"", displayName:"",
-    role:"user",
-    color:"#FF6B35", pin:"",
-    permissions: {
-      canManageUsers: false, canManageOrders: false, canManageContacts: false, canManageEvents: false, canViewEvents: true,
-      canManageExpenses: false, canManageAcquisitions: false, canManageDeliveries: false, canViewDeliveries: false, canManageReports: false,
-      canClockIn: true, canViewTasks: true, canSubmitExpenses: true, canSubmitAcquisitions: true,
-    }
+  const linkedSupplier = user?.role === "supplier" && user.supplierId
+    ? suppliers?.find((s) => s.id === user.supplierId)
+    : null;
+  const [form, setForm] = useState(() => {
+    if (!user) return {
+      email:"", password:"", displayName:"",
+      role:"user",
+      color:"#FF6B35",
+      supplierProfile: { companyName: "", contactName: "", phone: "", email: "", notes: "" },
+      permissions: {
+        canManageUsers: false, canManageOrders: false, canManageContacts: false, canManageEvents: false, canViewEvents: true,
+        canManageExpenses: false, canManageAcquisitions: false, canManageDeliveries: false, canViewDeliveries: false, canManageReports: false,
+        canManageSupplierOrders: false,
+        canClockIn: true, canViewTasks: true, canSubmitExpenses: true, canSubmitAcquisitions: true,
+      }
+    };
+    return {
+      ...user,
+      supplierProfile: {
+        companyName: linkedSupplier?.companyName || "",
+        contactName: linkedSupplier?.contactName || "",
+        phone:       linkedSupplier?.phone || "",
+        email:       linkedSupplier?.email || user.email || "",
+        notes:       linkedSupplier?.notes || "",
+      },
+    };
   });
   const [showPwd, setShowPwd] = useState(false);
   const [saving,  setSaving]  = useState(false);
@@ -38,6 +55,7 @@ export function UserModal({ user, onSave, onCreate, onDelete, onClose, currentUs
 
   const set = (k,v) => setForm(f => ({ ...f, [k]: v }));
   const setPerm = (k,v) => setForm(f => ({ ...f, permissions: { ...f.permissions, [k]: v } }));
+  const setSupplier = (k,v) => setForm(f => ({ ...f, supplierProfile: { ...(f.supplierProfile || {}), [k]: v } }));
 
   const applyTemplate = (tpl) => {
     if (tpl === "admin") {
@@ -66,27 +84,29 @@ export function UserModal({ user, onSave, onCreate, onDelete, onClose, currentUs
   const handleSave = async () => {
     if (!form.email || !form.displayName) { showToast("Email et nom requis"); return; }
     if (isNew && (!form.password || form.password.length < 6)) { showToast("Mot de passe min. 6 caractères"); return; }
+    if (form.role === "supplier" && !form.supplierProfile?.companyName?.trim()) { showToast("Le nom de l'entreprise fournisseur est requis."); return; }
     setSaving(true);
     try {
       if (isNew) {
-        const { uid } = await createAuthUserKeepingSession(form.email.trim(), form.password, form.displayName);
         await onCreate({
-          id: uid,
-          email: form.email.trim(), displayName: form.displayName, role: form.role,
-          permissions: form.permissions, color: form.color,
-          pin: form.pin || "",
+          email: form.email.trim(), password: form.password, displayName: form.displayName,
+          role: form.role,
+          ...(form.role === "supplier" ? { supplierProfile: form.supplierProfile } : { permissions: form.permissions }),
+          color: form.color,
         });
         showToast("✅ Utilisateur créé.");
       } else {
         await onSave({
           id: user.id, displayName: form.displayName, role: form.role,
-          permissions: form.permissions, color: form.color, pin: form.pin || "",
+          ...(form.role === "supplier" ? { supplierProfile: form.supplierProfile } : { permissions: form.permissions }),
+          color: form.color,
         });
       }
       onClose();
     } catch (e) {
       const msgs = {
         "auth/email-already-in-use": "Courriel déjà utilisé.",
+        "functions/already-exists": "Un compte existe déjà pour ce courriel.",
         "auth/invalid-email": "Courriel invalide.",
         "auth/weak-password": "Mot de passe trop faible.",
       };
@@ -134,25 +154,49 @@ export function UserModal({ user, onSave, onCreate, onDelete, onClose, currentUs
           <div>
             <label className="lbl">Rôle</label>
             <div style={{ display:"flex", gap:10 }}>
-              {[["user","👤 Utilisateur"],["admin","⚙️ Admin"]].map(([v,l]) => (
+              {[["user","👤 Utilisateur"],["admin","⚙️ Admin"],["supplier","🏭 Fournisseur"]].map(([v,l]) => (
                 <button key={v} onClick={() => set("role", v)} className="btn"
                   style={{ flex:1, justifyContent:"center", background:form.role===v?"#111":"white", color:form.role===v?"white":"#3A3A3C", border:"1.5px solid", borderColor:form.role===v?"#111":"#E5E5EA" }}>{l}</button>
               ))}
             </div>
             {form.role === "admin" && <p style={{ fontSize:12, color:"#8E8E93", marginTop:6 }}>Les permissions admin sont aussi configurables ci-dessous.</p>}
+            {form.role === "supplier" && <p style={{ fontSize:12, color:"#8E8E93", marginTop:6 }}>Le fournisseur n'a accès qu'au portail fournisseur, pas au tableau de bord interne.</p>}
           </div>
 
-          <div>
-            <label className="lbl">Permissions</label>
-            <div style={{ background:"#F9F9F9", borderRadius:12, padding:"12px 14px", display:"flex", flexDirection:"column", gap:10 }}>
-              {Object.entries(PERMISSION_LABELS).map(([key, label]) => (
-                <label key={key} style={{ display:"flex", alignItems:"center", gap:10, fontSize:14, cursor:"pointer" }}>
-                  <input type="checkbox" checked={form.permissions?.[key] || false} onChange={e => setPerm(key, e.target.checked)} style={{ width:18, height:18 }}/>
-                  <span>{label}</span>
-                </label>
-              ))}
+          {form.role === "supplier" && (
+            <div style={{ background:"#F9F9FB", border:"1px solid #EEF0F3", borderRadius:12, padding:"14px 16px", display:"flex", flexDirection:"column", gap:12 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:"#1C1C1E" }}>🏭 Fiche fournisseur</div>
+              <div>
+                <label className="lbl">Nom de l'entreprise *</label>
+                <input className="inp" placeholder="SeatCraft Co." value={form.supplierProfile?.companyName || ""} onChange={e => setSupplier("companyName", e.target.value)}/>
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                <div>
+                  <label className="lbl">Contact</label>
+                  <input className="inp" placeholder="Responsable production" value={form.supplierProfile?.contactName || ""} onChange={e => setSupplier("contactName", e.target.value)}/>
+                </div>
+                <div>
+                  <label className="lbl">Téléphone</label>
+                  <input className="inp" type="tel" placeholder="514-555-0100" value={form.supplierProfile?.phone || ""} onChange={e => setSupplier("phone", e.target.value)}/>
+                </div>
+              </div>
+              <p style={{ fontSize:12, color:"#8E8E93", lineHeight:1.4 }}>L'annuaire fournisseur est créé automatiquement et sera sélectionnable dans « Commandes fournisseurs ».</p>
             </div>
-          </div>
+          )}
+
+          {form.role !== "supplier" && (
+            <div>
+              <label className="lbl">Permissions</label>
+              <div style={{ background:"#F9F9F9", borderRadius:12, padding:"12px 14px", display:"flex", flexDirection:"column", gap:10 }}>
+                {Object.entries(PERMISSION_LABELS).map(([key, label]) => (
+                  <label key={key} style={{ display:"flex", alignItems:"center", gap:10, fontSize:14, cursor:"pointer" }}>
+                    <input type="checkbox" checked={form.permissions?.[key] || false} onChange={e => setPerm(key, e.target.checked)} style={{ width:18, height:18 }}/>
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="lbl">Couleur</label>
@@ -164,10 +208,6 @@ export function UserModal({ user, onSave, onCreate, onDelete, onClose, currentUs
             </div>
           </div>
 
-          <div>
-            <label className="lbl">NIP (optionnel, 4 chiffres)</label>
-            <input className="inp" type="text" maxLength={4} placeholder="----" value={form.pin || ""} onChange={e => set("pin", e.target.value.replace(/\D/g,"").slice(0,4))} style={{ letterSpacing:"6px", textAlign:"center" }}/>
-          </div>
 
           {!isNew && user?.email && (
             <div style={{ background:"#F9F9FB", border:"1px solid #EEF0F3", borderRadius:12, padding:"14px 16px" }}>

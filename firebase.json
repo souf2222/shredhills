@@ -1,5 +1,18 @@
 {
-  "firestore": {
-    "rules": "firestore.rules"
-  }
+  "firestore": [
+    { "database": "dev-db", "rules": "firestore.rules" },
+    { "database": "prod",   "rules": "firestore.rules" }
+  ],
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "predeploy": [
+        "npm run prepare:functions-env"
+      ]
+    }
+  ]
 }

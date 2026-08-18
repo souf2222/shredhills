@@ -25,54 +25,47 @@ Créer un projet sur la [Firebase Console](https://console.firebase.google.com),
 1. **Authentication** → activer le provider **Email/Password**
 2. **Firestore Database** → créer en mode production (région `us-east1` pour Montréal)
 3. **Storage** → activer (photos de preuves de livraison, signatures, factures)
-4. **Project Settings** → **Your apps** → enregistrer une **Web app** et copier la config
+4. **Functions** → passer au plan Blaze et activer Cloud Functions
+5. **Project Settings** → **Your apps** → enregistrer une **Web app** et copier la config
 
 Coller les valeurs dans un fichier `.env` à la racine (voir `.env.example`) :
 
 ```env
-REACT_APP_FIREBASE_API_KEY=AIzaSy...
-REACT_APP_FIREBASE_AUTH_DOMAIN=ton-projet.firebaseapp.com
-REACT_APP_FIREBASE_PROJECT_ID=ton-projet
-REACT_APP_FIREBASE_STORAGE_BUCKET=ton-projet.firebasestorage.app
-REACT_APP_FIREBASE_MESSAGING_SENDER_ID=123456789
-REACT_APP_FIREBASE_APP_ID=1:123456789:web:abcdef
+VITE_FIREBASE_API_KEY=AIzaSy...
+VITE_FIREBASE_AUTH_DOMAIN=ton-projet.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=ton-projet
+VITE_FIREBASE_STORAGE_BUCKET=ton-projet.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
+VITE_FIREBASE_APP_ID=1:123456789:web:abcdef
+VITE_FIREBASE_DB=
 ```
 
-> ℹ️ Des valeurs de fallback pointant vers le projet `shredhills-dev` sont câblées
-> dans `src/firebase.js` pour faciliter les tests, mais en production **utilise toujours `.env`**.
+The Functions environment is generated from the same root `.env` file before deployment, so it always uses the exact `VITE_FIREBASE_DB` or legacy `REACT_APP_FIREBASE_DB` value.
 
-Déployer ensuite les règles de sécurité (contenu des fichiers à la racine) :
-- `firestore.rules` → **Firestore → Rules**
-- `storage.rules`   → **Storage → Rules**
+### 3. Initialiser l'administrateur
 
-### 3. Initialiser les comptes de démo (une seule fois)
+Créer le premier compte avec un mot de passe unique de 12 caractères ou plus dans Firebase Authentication. Depuis un environnement de confiance disposant des identifiants Admin SDK, lui attribuer les claims :
 
-Lancer l'app en local :
 ```bash
-npm start
-```
-→ ouvre http://localhost:3000
-
-Dans la console du navigateur (F12) :
-```js
-window.seedDatabase()
+export GOOGLE_APPLICATION_CREDENTIALS=/chemin/vers/service-account.json
+node functions/scripts/bootstrap-admin.mjs admin@exemple.com
 ```
 
-Cela crée les comptes Firebase Auth et les profils Firestore initiaux,
-ainsi que quelques événements et commandes d'exemple.
+L'administrateur doit se déconnecter puis se reconnecter. Les administrateurs créent ensuite les autres comptes dans l'application par Cloud Functions; cette action ne peut pas être exécutée par le navigateur seul.
 
-### 4. Comptes par défaut
+### 4. Déployer les contrôles de sécurité
 
-| Rôle              | Email                       | Mot de passe |
-|-------------------|-----------------------------|--------------|
-| Propriétaire      | `admin@shredhills.com`      | `admin123`   |
-| Comptable         | `compta@shredhills.com`     | `compta123`  |
-| Employé (Alex)    | `alexandre@shredhills.com`  | `emp1234`    |
-| Employé (Marika)  | `marika@shredhills.com`     | `emp1234`    |
-| Employé (Jordan)  | `jordan@shredhills.com`     | `emp1234`    |
-| Livreur (Kevin)   | `kevin@shredhills.com`      | `driver123`  |
+```bash
+firebase deploy --only firestore:rules,storage,functions
+```
 
-> ⚠️ **Change tous les mots de passe** avant la mise en production.
+Avant de déployer ces règles sur un projet existant, inspecter chaque profil utilisateur puis migrer les permissions vers les custom claims :
+
+```bash
+node functions/scripts/migrate-claims.mjs --confirm-reviewed
+```
+
+Ce script efface les anciens NIP enregistrés en clair. Les champs `role` et `permissions` restent disponibles comme métadonnées d'affichage; les Rules et l'autorisation cliente utilisent uniquement les custom claims. Le script doit être exécuté uniquement après avoir confirmé que les rôles existants sont légitimes, car les anciens profils pouvaient être modifiés par tout utilisateur authentifié.
 
 ---
 

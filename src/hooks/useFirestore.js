@@ -1,10 +1,9 @@
 // src/hooks/useFirestore.js
 import { useState, useEffect } from "react";
 import {
-  collection, doc, onSnapshot, serverTimestamp, query, orderBy, limit, writeBatch
+  collection, doc, onSnapshot, serverTimestamp, query, where, orderBy, limit, writeBatch
 } from "firebase/firestore";
 import { db, uploadExpensePhoto, deleteStorageFile } from "../firebase";
-import { buildAuditEntry } from "../utils/audit";
 
 // Firestore Timestamps can come back as objects (with .toMillis() or .seconds).
 // We normalize them to plain numbers so every consumer can do arithmetic safely.
@@ -37,10 +36,13 @@ export function useFirestore(authUser, auditActor) {
   const [contacts,    setContacts]    = useState([]);
   const [acquisitions, setAcquisitions] = useState([]);
   const [auditLogs,   setAuditLogs]   = useState([]);
+  const [supplierOrders, setSupplierOrders] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [loading,     setLoading]     = useState(true);
 
   const authUid = authUser?.uid || null;
   const canViewAudit = auditActor?.role === "admin" || !!auditActor?.permissions?.canManageUsers;
+  const can = (permission) => auditActor?.role === "admin" || !!auditActor?.permissions?.[permission];
 
   useEffect(() => {
     // Don't subscribe until the user is authenticated. Firestore rules require
@@ -53,57 +55,95 @@ export function useFirestore(authUser, auditActor) {
     }
 
     let loaded = 0;
-    const TOTAL = 9;
-    const done = () => { loaded++; if (loaded >= TOTAL) setLoading(false); };
+    const listeners = [];
+    const done = () => { loaded++; if (loaded >= listeners.length) setLoading(false); };
     const onErr = (label) => (err) => {
       console.error(`Firestore listener error (${label}):`, err);
       done();
     };
 
-    const unsubs = [
-      onSnapshot(collection(db, "users"), snap => {
-        setUsers(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
-      }, onErr("users")),
+    const listen = (label, source, setData) => {
+      listeners.push(onSnapshot(source, snap => { setData(snap); done(); }, onErr(label)));
+    };
 
-      onSnapshot(query(collection(db, "orders"), orderBy("createdAt", "desc")), snap => {
-        setOrders(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
-      }, onErr("orders")),
+    listen("users", collection(db, "users"), snap => {
+      setUsers(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+    });
 
-      onSnapshot(query(collection(db, "stops"), orderBy("createdAt", "desc")), snap => {
-        setStops(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
-      }, onErr("stops")),
+    if (can("canManageOrders") || can("canViewTasks")) {
+      const source = can("canManageOrders")
+        ? query(collection(db, "orders"), orderBy("createdAt", "desc"))
+        : query(collection(db, "orders"), where("assignedTo", "==", authUid));
+      listen("orders", source, snap => setOrders(snap.docs.map(d => ({ ...d.data(), id: d.id }))));
+    } else setOrders([]);
 
-      onSnapshot(collection(db, "punches"), snap => {
-        const map = {};
-        snap.docs.forEach(d => { map[d.id] = d.data().sessions || []; });
-        setPunches(map); done();
-      }, onErr("punches")),
+    if (can("canManageDeliveries") || can("canViewDeliveries")) {
+      const source = can("canManageDeliveries")
+        ? query(collection(db, "stops"), orderBy("createdAt", "desc"))
+        : query(collection(db, "stops"), where("assignedTo", "==", authUid));
+      listen("stops", source, snap => setStops(snap.docs.map(d => ({ ...d.data(), id: d.id }))));
+    } else setStops([]);
 
-      onSnapshot(query(collection(db, "purchases"), orderBy("submittedAt", "desc")), snap => {
-        setPurchases(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
-      }, onErr("purchases")),
+    if (can("canManageReports") || can("canClockIn")) {
+      const source = can("canManageReports") ? collection(db, "punches") : doc(db, "punches", authUid);
+      listen("punches", source, snap => {
+        if (can("canManageReports")) {
+          const map = {};
+          snap.docs.forEach(d => { map[d.id] = d.data().sessions || []; });
+          setPunches(map);
+        } else {
+          setPunches(snap.exists() ? { [snap.id]: snap.data().sessions || [] } : {});
+        }
+      });
+    } else setPunches({});
 
-      onSnapshot(query(collection(db, "events"), orderBy("startDate", "asc")), snap => {
-        setEvents(snap.docs.map(normalizeEvent)); done();
-      }, onErr("events")),
+    if (can("canManageExpenses") || can("canSubmitExpenses")) {
+      const source = can("canManageExpenses")
+        ? query(collection(db, "purchases"), orderBy("submittedAt", "desc"))
+        : query(collection(db, "purchases"), where("empId", "==", authUid));
+      listen("purchases", source, snap => setPurchases(snap.docs.map(d => ({ ...d.data(), id: d.id }))));
+    } else setPurchases([]);
 
-      onSnapshot(collection(db, "purchaseCategories"), snap => {
-        const list = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-        list.sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || (a.label || "").localeCompare(b.label || ""));
-        setCategories(list); done();
-      }, onErr("purchaseCategories")),
+    if (can("canManageEvents") || can("canViewEvents")) {
+      listen("events", query(collection(db, "events"), orderBy("startDate", "asc")), snap => {
+        setEvents(snap.docs.map(normalizeEvent));
+      });
+    } else setEvents([]);
 
-      onSnapshot(query(collection(db, "contacts"), orderBy("name", "asc")), snap => {
-        setContacts(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
-      }, onErr("contacts")),
+    listen("purchaseCategories", collection(db, "purchaseCategories"), snap => {
+      const list = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+      list.sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || (a.label || "").localeCompare(b.label || ""));
+      setCategories(list);
+    });
 
-      onSnapshot(query(collection(db, "acquisitions"), orderBy("submittedAt", "desc")), snap => {
-        setAcquisitions(snap.docs.map(d => ({ ...d.data(), id: d.id }))); done();
-      }, onErr("acquisitions")),
-    ];
+    if (can("canManageContacts")) {
+      listen("contacts", query(collection(db, "contacts"), orderBy("name", "asc")), snap => {
+        setContacts(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+      });
+    } else setContacts([]);
 
-    return () => unsubs.forEach(u => u());
-  }, [authUid]);
+    if (can("canManageAcquisitions") || can("canSubmitAcquisitions")) {
+      const source = can("canManageAcquisitions")
+        ? query(collection(db, "acquisitions"), orderBy("submittedAt", "desc"))
+        : query(collection(db, "acquisitions"), where("requesterId", "==", authUid));
+      listen("acquisitions", source, snap => setAcquisitions(snap.docs.map(d => ({ ...d.data(), id: d.id }))));
+    } else setAcquisitions([]);
+
+    if (can("canManageSupplierOrders")) {
+      listen("supplierOrders", query(collection(db, "supplierOrders"), orderBy("createdAt", "desc")), snap => {
+        setSupplierOrders(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+      });
+      listen("suppliers", query(collection(db, "suppliers"), orderBy("createdAt", "asc")), snap => {
+        setSuppliers(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+      });
+    } else {
+      setSupplierOrders([]);
+      setSuppliers([]);
+    }
+
+    if (listeners.length === 0) setLoading(false);
+    return () => listeners.forEach(unsub => unsub());
+  }, [authUid, auditActor?.role, auditActor?.permissions]);
 
   useEffect(() => {
     if (!authUid || !canViewAudit) {
@@ -118,16 +158,10 @@ export function useFirestore(authUser, auditActor) {
     );
   }, [authUid, canViewAudit]);
 
-  const addAudit = (batch, action, collectionName, entityId, before, after) => {
-    const entry = buildAuditEntry({ action, collectionName, entityId, actor: auditActor, before, after });
-    batch.set(doc(collection(db, "auditLogs")), { ...entry, createdAt: serverTimestamp() });
-  };
-
   const createAudited = async (collectionName, data) => {
     const ref = doc(collection(db, collectionName));
     const batch = writeBatch(db);
     batch.set(ref, data);
-    addAudit(batch, "create", collectionName, ref.id, null, data);
     await batch.commit();
     return ref;
   };
@@ -136,21 +170,18 @@ export function useFirestore(authUser, auditActor) {
     const batch = writeBatch(db);
     if (merge) batch.set(doc(db, collectionName, id), data, { merge: true });
     else batch.set(doc(db, collectionName, id), data);
-    addAudit(batch, "update", collectionName, id, before, merge ? { ...before, ...data } : data);
     await batch.commit();
   };
 
   const updateAudited = async (collectionName, id, data, before = {}) => {
     const batch = writeBatch(db);
     batch.update(doc(db, collectionName, id), data);
-    addAudit(batch, "update", collectionName, id, before, { ...before, ...data });
     await batch.commit();
   };
 
   const deleteAudited = async (collectionName, id, before = {}) => {
     const batch = writeBatch(db);
     batch.delete(doc(db, collectionName, id));
-    addAudit(batch, "delete", collectionName, id, before, null);
     await batch.commit();
   };
 
@@ -164,7 +195,6 @@ export function useFirestore(authUser, auditActor) {
     const batch = writeBatch(db);
     const created = { ...data, createdAt: serverTimestamp() };
     batch.set(doc(db, "users", id), created);
-    addAudit(batch, "create", "users", id, null, created);
     return batch.commit();
   };
   const updateUser = (user) => {
@@ -316,8 +346,34 @@ export function useFirestore(authUser, auditActor) {
       receivedAt: Date.now(),
     }, itemById(acquisitions, id));
 
+  // SUPPLIERS (directory)
+  const addSupplier = (s) => createAudited("suppliers", {
+    ...s, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+  });
+  const updateSupplier = (id, data) => updateAudited("suppliers", id, data, itemById(suppliers, id));
+  const deleteSupplier = (id) => deleteAudited("suppliers", id, itemById(suppliers, id));
+
+  // SUPPLIER ORDERS — admin creates/edits the document directly (rules allow
+  // canManageSupplierOrders writes). All supplier-side mutations go through
+  // the updateSupplierOrder callable; history is owned by the callable.
+  const addSupplierOrder = (order) => createAudited("supplierOrders", {
+    ...order,
+    status: order.status || "pending",
+    notes: [],
+    attachments: [],
+    history: [],
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  const updateSupplierOrderDoc = (id, data) => updateAudited("supplierOrders", id, {
+    ...data, updatedAt: serverTimestamp()
+  }, itemById(supplierOrders, id));
+  const deleteSupplierOrder = (id) => deleteAudited("supplierOrders", id, itemById(supplierOrders, id));
+
   return {
-    users, orders, stops, punches, purchases, events, categories, contacts, acquisitions, auditLogs, loading,
+    users, orders, stops, punches, purchases, events, categories, contacts, acquisitions, auditLogs,
+    supplierOrders, suppliers,
+    loading,
     saveUser, updateUser, deleteUser,
     addOrder, updateOrder, deleteOrder,
     addStop, updateStop, deleteStop,
@@ -327,5 +383,7 @@ export function useFirestore(authUser, auditActor) {
     addEvent, updateEvent, deleteEvent,
     addContact, updateContact, deleteContact,
     addAcquisition, updateAcquisition, deleteAcquisition, approveAcquisition, refuseAcquisition, orderAcquisition, receiveAcquisition,
+    addSupplier, updateSupplier, deleteSupplier,
+    addSupplierOrder, updateSupplierOrderDoc, deleteSupplierOrder,
   };
 }

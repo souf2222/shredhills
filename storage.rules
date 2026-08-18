@@ -1,28 +1,73 @@
-// storage.rules
-// Paste these rules into Firebase Console → Storage → Rules
-//
-// Policy : only authenticated users can read or write files in the bucket.
-// The only path currently used by the app is :
-//   - purchases/{purchaseId}/{timestamp}.{ext}   → receipt attached to a
-//     purchase request (image or PDF, capped at 10 MB).
-// Everything else is denied by default so the bucket can't be used as a
-// free public file host.
-
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-
-    // Purchase receipts. Accept images and PDFs up to 10 MB.
-    match /purchases/{allPaths=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null
-                   && request.resource.size < 10 * 1024 * 1024
-                   && (request.resource.contentType.matches('image/.*')
-                       || request.resource.contentType == 'application/pdf');
-      allow delete: if request.auth != null;
+    function signedIn() {
+      return request.auth != null;
     }
 
-    // Deny-by-default for any other path.
+    function isExpenseManager() {
+      return signedIn() && (
+        request.auth.token.role == "admin" ||
+        (request.auth.token.permissions != null &&
+         request.auth.token.permissions.keys().hasAll(["canManageExpenses"]) &&
+         request.auth.token.permissions.canManageExpenses == true)
+      );
+    }
+
+    // Receipts are owned by their submitter. A manager may access every
+    // receipt, while other authenticated users cannot discover or alter them.
+    match /purchases/{uid}/{purchaseId}/{fileName} {
+      allow read: if isExpenseManager() || (signedIn() && request.auth.uid == uid);
+      allow create: if signedIn() && request.auth.uid == uid &&
+        request.resource.size < 10 * 1024 * 1024 &&
+        (request.resource.contentType.matches('image/.*') ||
+         request.resource.contentType == 'application/pdf');
+      allow update, delete: if isExpenseManager() || (signedIn() && request.auth.uid == uid);
+    }
+
+    // Existing receipts used a path without an owner segment. Preserve
+    // read access while preventing all new writes to the legacy layout.
+    match /purchases/{purchaseId}/{fileName} {
+      allow read, delete: if isExpenseManager();
+    }
+
+    // ── Supplier portal ────────────────────────────────────────────────────
+    // Shipping labels and order attachments live under a supplier-scoped path.
+    // Admins upload; the assigned supplier can download. Storage rules cannot
+    // query Firestore, so access is gated by the supplierId custom claim and
+    // the path must always be keyed by the supplier's id.
+    //
+    // NOTE: this project uses a single Storage bucket across the dev-db and
+    // prod databases. A supplier with the same supplierId in both environments
+    // can technically read each other's labels if they know the exact path.
+    // Paths are not enumerable, and labels contain only fulfillment info, so
+    // the practical risk is low. Do not reuse supplierIds across environments
+    // if you need strict file isolation.
+    function isSupplierManager() {
+      return signedIn() && (
+        request.auth.token.role == "admin" ||
+        (request.auth.token.permissions != null &&
+         request.auth.token.permissions.keys().hasAll(["canManageSupplierOrders"]) &&
+         request.auth.token.permissions.canManageSupplierOrders == true)
+      );
+    }
+
+    function isSupplierForStoragePath(supplierId) {
+      return signedIn() &&
+        request.auth.token.role == "supplier" &&
+        request.auth.token.supplierId != null &&
+        request.auth.token.supplierId == supplierId;
+    }
+
+    match /supplierOrders/{supplierId}/{orderId}/{filePath=**} {
+      allow read: if isSupplierManager() || isSupplierForStoragePath(supplierId);
+      allow create, update: if isSupplierManager() &&
+        request.resource.size < 25 * 1024 * 1024 &&
+        (request.resource.contentType == 'application/pdf' ||
+         request.resource.contentType.matches('image/.*'));
+      allow delete: if isSupplierManager();
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

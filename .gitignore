@@ -9,6 +9,7 @@ node_modules/
 !public/*.png
 .DS_Store
 build/
+dist/
 refactor.py
 fix_pages.py
 patch-*.js
