@@ -449,11 +449,11 @@ exports.updateSupplierOrder = onCall(async (request) => {
         throw new HttpsError("invalid-argument", `Unknown status: ${nextStatus}.`);
       }
       const current = before.status || "pending";
-      const allowed = SUPPLIER_TRANSITIONS[current] || [];
-      if (!allowed.includes(nextStatus)) {
-        throw new HttpsError("failed-precondition", `Cannot move from ${current} to ${nextStatus}.`);
-      }
       if (!isAdminSide) {
+        const allowed = SUPPLIER_TRANSITIONS[current] || [];
+        if (!allowed.includes(nextStatus)) {
+          throw new HttpsError("failed-precondition", `Cannot move from ${current} to ${nextStatus}.`);
+        }
         const supplierAllowed = SUPPLIER_ALLOWED_NEXT[current] || [];
         if (!supplierAllowed.includes(nextStatus)) {
           throw new HttpsError("permission-denied", "Suppliers may not perform this status change.");
@@ -464,6 +464,9 @@ exports.updateSupplierOrder = onCall(async (request) => {
         throw new HttpsError("failed-precondition", "A shipping label must be uploaded before an order can ship.");
       }
       update.status = nextStatus;
+      if (nextStatus === "paid" && !before.paidAt) {
+        update.paidAt = Date.now();
+      }
       history.push(buildHistoryEntry(actor, role, "status_change", "status", current, nextStatus));
     }
 

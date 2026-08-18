@@ -52,6 +52,7 @@ export function PortalOrderDetail({ order, onClose, onToast }) {
   const canSetEstimate = ["in_production", "ready_to_ship"].includes(order.status);
   const history = Array.isArray(order.history) ? [...order.history].reverse() : [];
   const notes = Array.isArray(order.notes) ? order.notes : [];
+  const attachments = Array.isArray(order.attachments) ? order.attachments : [];
 
   const changeStatus = async (to) => {
     if (!to || to === order.status || busy) return;
@@ -138,13 +139,15 @@ export function PortalOrderDetail({ order, onClose, onToast }) {
               <select
                 className="inp"
                 style={{ minWidth: 200, fontWeight: 600, color }}
-                value={order.status}
+                value=""
                 disabled={busy}
                 onChange={(e) => changeStatus(e.target.value)}
               >
-                {SUPPLIER_ORDER_STATUSES.map((s) => (
-                  <option key={s.key} value={s.key}>{s.portal}</option>
-                ))}
+                <option value="" disabled>{SUPPLIER_STATUS_PORTAL_LABEL(order.status)}</option>
+                {allowedNext.map((s) => {
+                  const meta = SUPPLIER_ORDER_STATUSES.find((o) => o.key === s);
+                  return <option key={s} value={s}>{meta ? meta.portal : s}</option>;
+                })}
               </select>
             </div>
           </div>
@@ -152,6 +155,12 @@ export function PortalOrderDetail({ order, onClose, onToast }) {
         {order.status === "ready_to_ship" && !order.shippingLabel?.path && (
           <p style={{ fontSize: 12, color: "#FF3B30", marginBottom: 16 }}>
             The shipping label is not available yet. You will be able to mark this as shipped once the label is uploaded.
+          </p>
+        )}
+
+        {order.paidAt && (
+          <p style={{ fontSize: 12, color: "#34C759", fontWeight: 600, marginBottom: 16 }}>
+            💳 Paid on {new Date(order.paidAt).toLocaleString("en-CA")}
           </p>
         )}
 
@@ -183,6 +192,18 @@ export function PortalOrderDetail({ order, onClose, onToast }) {
             <p style={{ fontSize: 12, color: "#34C759", marginTop: 8 }}>Tracking: {order.shippingLabel.trackingNumber}</p>
           )}
         </Detail>
+
+        {attachments.length > 0 && (
+          <Detail title={`Attachments (${attachments.length})`}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {attachments.map((a, i) => (
+                <button key={i} className="btn btn-outline" style={{ padding: "8px 12px", fontSize: 13, justifyContent: "flex-start" }} onClick={() => downloadFile(a.path)}>
+                  📎 {a.name}
+                </button>
+              ))}
+            </div>
+          </Detail>
+        )}
 
         <Detail title={`Notes (${notes.length})`}>
           {notes.length === 0 ? (

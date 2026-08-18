@@ -54,9 +54,9 @@ export const SUPPLIER_TRANSITIONS = {
 };
 
 export const SUPPLIER_ALLOWED_NEXT = {
-  paid: ["in_production"],
-  in_production: ["ready_to_ship"],
-  ready_to_ship: ["shipped"],
+  paid: ["in_production", "waiting_for_info"],
+  in_production: ["ready_to_ship", "waiting_for_info"],
+  ready_to_ship: ["shipped", "waiting_for_info"],
 };
 
 export const COLORS = [

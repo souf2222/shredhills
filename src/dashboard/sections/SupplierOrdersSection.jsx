@@ -220,7 +220,7 @@ export function SupplierOrdersSection({ supplierOrders, suppliers, onNew, onSele
                   </ExpandableSection>
                 )}
                 {shipped.length > 0 && (
-                  <ExpandableSection title="Expédiées" count={shipped.length} defaultExpanded={false}>
+                  <ExpandableSection title="Expédiées" count={shipped.length} defaultExpanded={true}>
                     {shipped.map(renderOrder)}
                   </ExpandableSection>
                 )}

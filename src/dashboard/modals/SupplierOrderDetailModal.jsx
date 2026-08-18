@@ -191,6 +191,12 @@ export function SupplierOrderDetailModal({ order, suppliers, onEdit, onDelete, o
           <button className="btn btn-outline" style={{ padding: "8px 14px", fontSize: 13, color: "#FF3B30", marginTop: 20 }} onClick={() => onDelete(order)}>🗑️ Supprimer</button>
         </div>
 
+        {order.paidAt && (
+          <p style={{ fontSize: 12, color: "#34C759", fontWeight: 600, marginBottom: 16 }}>
+            💳 Payée le {new Date(order.paidAt).toLocaleString("fr-CA")}
+          </p>
+        )}
+
         <Detail title="Client">
           <p style={{ fontSize: 13, color: "#1C1C1E", lineHeight: 1.6 }}>
             <strong>{order.customer?.name || "—"}</strong>

@@ -752,7 +752,7 @@ export function DashboardPage() {
 
       {supplierOrderDetailModal && (
         <SupplierOrderDetailModal
-          order={supplierOrderDetailModal}
+          order={supplierOrders.find(o => o.id === supplierOrderDetailModal.id) || supplierOrderDetailModal}
           suppliers={suppliers}
           onEdit={(o) => { setSupplierOrderDetailModal(null); setSupplierOrderModal(o); }}
           onDelete={(o) => { setSupplierOrderDetailModal(null); setDeleteSupplierOrderConfirm(o); }}

@@ -141,8 +141,7 @@ export function PortalOrders({ orders, loading, onToast, onSelect }) {
               { key: "status", type: "select", value: statusFilter, onChange: setStatusFilter, options: [
                 { value: "all", label: `All (${orders.length})`, color: "#6D6D72" },
                 { value: "active", label: `Active (${activeCount})`, color: "#007AFF" },
-                { value: "pending", label: `Pending (${countBy("pending")})`, color: "#8E8E93" },
-                { value: "paid", label: `Paid (${countBy("paid")})`, color: "#007AFF" },
+                // Supplier can only transition to these statuses, so only show them in the filter
                 { value: "in_production", label: `In production (${countBy("in_production")})`, color: "#FF9500" },
                 { value: "ready_to_ship", label: `Ready to ship (${countBy("ready_to_ship")})`, color: "#AF52DE" },
                 { value: "shipped", label: `Shipped (${countBy("shipped")})`, color: "#34C759" },
@@ -208,7 +207,7 @@ export function PortalOrders({ orders, loading, onToast, onSelect }) {
                   </ExpandableSection>
                 )}
                 {shipped.length > 0 && (
-                  <ExpandableSection title="Shipped" count={shipped.length} defaultExpanded={false}>
+                  <ExpandableSection title="Shipped" count={shipped.length} defaultExpanded={true}>
                     {shipped.map(renderOrder)}
                   </ExpandableSection>
                 )}

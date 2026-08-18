@@ -30,6 +30,7 @@ const permissions = {
   canManageExpenses: true,
   canManageAcquisitions: true,
   canManageReports: true,
+  canManageSupplierOrders: true,
   canViewEvents: true,
   canViewDeliveries: true,
   canViewTasks: true,
