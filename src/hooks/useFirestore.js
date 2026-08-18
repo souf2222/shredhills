@@ -236,12 +236,7 @@ export function useFirestore(authUser, auditActor) {
       throw new Error("INVALID_TIMESTAMP");
     }
     
-    // First, ensure the punches document exists with an empty sessions array if needed
     const punchRef = doc(db, "punches", empId);
-    const punchDocSnap = await getDoc(punchRef);
-    if (!punchDocSnap.exists()) {
-      await setDoc(punchRef, { sessions: [] });
-    }
     
     try {
       await runTransaction(db, async (transaction) => {
@@ -281,7 +276,7 @@ export function useFirestore(authUser, auditActor) {
           // Add the new session to existing sessions
           transaction.set(punchRef, { sessions: [...serverSessions, session] }, { merge: true });
         } else {
-          // This should never happen due to the pre-check above, but as a safety net
+          // Document doesn't exist, create it with the new session as the first entry
           transaction.set(punchRef, { sessions: [session] }, { merge: true });
         }
       });
