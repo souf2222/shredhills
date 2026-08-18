@@ -1,7 +1,8 @@
 // src/hooks/useFirestore.js
 import { useState, useEffect } from "react";
 import {
-  collection, doc, onSnapshot, serverTimestamp, query, where, orderBy, limit, writeBatch, runTransaction
+  collection, doc, onSnapshot, serverTimestamp, query, where, orderBy, limit, writeBatch, runTransaction,
+  getDoc, setDoc
 } from "firebase/firestore";
 import { db, uploadExpensePhoto, deleteStorageFile } from "../firebase";
 import { dayStart } from "../utils/helpers";
@@ -234,9 +235,16 @@ export function useFirestore(authUser, auditActor) {
     if (!isValidPunchTs(session.punchIn)) {
       throw new Error("INVALID_TIMESTAMP");
     }
+    
+    // First, ensure the punches document exists with an empty sessions array if needed
+    const punchRef = doc(db, "punches", empId);
+    const punchDocSnap = await getDoc(punchRef);
+    if (!punchDocSnap.exists()) {
+      await setDoc(punchRef, { sessions: [] });
+    }
+    
     try {
       await runTransaction(db, async (transaction) => {
-        const punchRef = doc(db, "punches", empId);
         const punchDoc = await transaction.get(punchRef);
         let serverSessions = [];
 
@@ -269,9 +277,13 @@ export function useFirestore(authUser, auditActor) {
           if (hasActiveToday) {
             throw new Error("ALREADY_ACTIVE_SESSION");
           }
+          
+          // Add the new session to existing sessions
+          transaction.set(punchRef, { sessions: [...serverSessions, session] }, { merge: true });
+        } else {
+          // This should never happen due to the pre-check above, but as a safety net
+          transaction.set(punchRef, { sessions: [session] }, { merge: true });
         }
-
-        transaction.set(punchRef, { sessions: [...serverSessions, session] }, { merge: true });
       });
     } catch (error) {
       if (error.message === "ALREADY_ACTIVE_SESSION") {
