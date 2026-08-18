@@ -1,9 +1,10 @@
 // src/hooks/useFirestore.js
 import { useState, useEffect } from "react";
 import {
-  collection, doc, onSnapshot, serverTimestamp, query, where, orderBy, limit, writeBatch
+  collection, doc, onSnapshot, serverTimestamp, query, where, orderBy, limit, writeBatch, runTransaction
 } from "firebase/firestore";
 import { db, uploadExpensePhoto, deleteStorageFile } from "../firebase";
+import { dayStart } from "../utils/helpers";
 
 // Firestore Timestamps can come back as objects (with .toMillis() or .seconds).
 // We normalize them to plain numbers so every consumer can do arithmetic safely.
@@ -217,29 +218,109 @@ export function useFirestore(authUser, auditActor) {
   const getPunchSessions = (empId) => punches[empId] || [];
 
   const addPunchSession = async (empId, session) => {
-    const current = getPunchSessions(empId);
-    await setAudited("punches", empId, { sessions: [...current, session] }, { id: empId, sessions: current });
+    try {
+      await runTransaction(db, async (transaction) => {
+        const punchRef = doc(db, "punches", empId);
+        const punchDoc = await transaction.get(punchRef);
+        let serverSessions = [];
+        
+        if (punchDoc.exists()) {
+          const data = punchDoc.data();
+          serverSessions = Array.isArray(data.sessions) ? data.sessions.map(s => ({
+            ...s,
+            punchIn: toMs(s.punchIn),
+            punchOut: s.punchOut ? toMs(s.punchOut) : null
+          })) : [];
+          
+          // Check for active session today (guard against double punch-in)
+          const todayStart = dayStart(Date.now());
+          const hasActiveToday = serverSessions.some(s => 
+            !s.punchOut && dayStart(toMs(s.punchIn)) === todayStart
+          );
+          
+          if (hasActiveToday) {
+            throw new Error("ALREADY_ACTIVE_SESSION");
+          }
+        }
+        
+        transaction.set(punchRef, { sessions: [...serverSessions, session] }, { merge: true });
+      });
+    } catch (error) {
+      if (error.message === "ALREADY_ACTIVE_SESSION") {
+        throw new Error("ALREADY_ACTIVE_SESSION");
+      }
+      throw error;
+    }
   };
 
   const updatePunchSession = async (empId, updatedSession) => {
-    const current = getPunchSessions(empId);
-    await setAudited("punches", empId, {
-      sessions: current.map(s => s.id === updatedSession.id ? updatedSession : s)
-    }, { id: empId, sessions: current }, false);
+    await runTransaction(db, async (transaction) => {
+      const punchRef = doc(db, "punches", empId);
+      const punchDoc = await transaction.get(punchRef);
+      
+      if (!punchDoc.exists()) return;
+      
+      const data = punchDoc.data();
+      const serverSessions = Array.isArray(data.sessions) ? data.sessions.map(s => ({
+        ...s,
+        punchIn: toMs(s.punchIn),
+        punchOut: s.punchOut ? toMs(s.punchOut) : null
+      })) : [];
+      
+      const updatedSessions = serverSessions.map(s => 
+        s.id === updatedSession.id ? updatedSession : s
+      );
+      
+      if (updatedSessions.some(s => s.id === updatedSession.id)) {
+        transaction.set(punchRef, { sessions: updatedSessions }, { merge: true });
+      }
+    });
   };
 
   const closePunchSession = async (empId, sessionId) => {
-    const current = getPunchSessions(empId);
-    await setAudited("punches", empId, {
-      sessions: current.map(s => s.id === sessionId ? { ...s, punchOut: Date.now() } : s)
-    }, { id: empId, sessions: current }, false);
+    await runTransaction(db, async (transaction) => {
+      const punchRef = doc(db, "punches", empId);
+      const punchDoc = await transaction.get(punchRef);
+      
+      if (!punchDoc.exists()) return;
+      
+      const data = punchDoc.data();
+      const serverSessions = Array.isArray(data.sessions) ? data.sessions.map(s => ({
+        ...s,
+        punchIn: toMs(s.punchIn),
+        punchOut: s.punchOut ? toMs(s.punchOut) : null
+      })) : [];
+      
+      const updatedSessions = serverSessions.map(s => 
+        s.id === sessionId ? { ...s, punchOut: Date.now() } : s
+      );
+      
+      if (updatedSessions.some(s => s.id === sessionId)) {
+        transaction.set(punchRef, { sessions: updatedSessions }, { merge: true });
+      }
+    });
   };
 
   const deletePunchSession = async (empId, sessionId) => {
-    const current = getPunchSessions(empId);
-    await setAudited("punches", empId, {
-      sessions: current.filter(s => s.id !== sessionId)
-    }, { id: empId, sessions: current }, false);
+    await runTransaction(db, async (transaction) => {
+      const punchRef = doc(db, "punches", empId);
+      const punchDoc = await transaction.get(punchRef);
+      
+      if (!punchDoc.exists()) return;
+      
+      const data = punchDoc.data();
+      const serverSessions = Array.isArray(data.sessions) ? data.sessions.map(s => ({
+        ...s,
+        punchIn: toMs(s.punchIn),
+        punchOut: s.punchOut ? toMs(s.punchOut) : null
+      })) : [];
+      
+      const filteredSessions = serverSessions.filter(s => s.id !== sessionId);
+      
+      if (filteredSessions.length !== serverSessions.length) {
+        transaction.set(punchRef, { sessions: filteredSessions }, { merge: true });
+      }
+    });
   };
 
   // EXPENSES (formerly PURCHASES)

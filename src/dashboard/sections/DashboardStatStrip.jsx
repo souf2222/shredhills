@@ -21,8 +21,17 @@ export function DashboardStatStrip({ events, orders, stops, users, punches, user
 
   const punchIn = async () => {
     const session = { id: `P-${Date.now().toString(36).toUpperCase()}`, punchIn: Date.now(), punchOut: null, note: "" };
-    await addPunchSession(userProfile.id, session);
-    showToast("Punch in !");
+    try {
+      await addPunchSession(userProfile.id, session);
+      showToast("Punch in !");
+    } catch (error) {
+      if (error.message === "ALREADY_ACTIVE_SESSION") {
+        showToast("Tu es déjà en service");
+      } else {
+        showToast("Erreur lors du punch in");
+        console.error("Punch in error:", error);
+      }
+    }
   };
 
   const punchOut_ = async () => {
