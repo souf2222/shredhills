@@ -14,24 +14,32 @@ const {
 
 const app = initializeApp();
 
-// Single Firebase project, two Firestore databases (dev-db + prod). Triggers
-// must be registered statically at module load, so we declare two params
-// rather than parsing a CSV. Both default to the project's actual DB names
-// and can be overridden via env if the project layout ever changes.
-const DB_DEV  = defineString("FIRESTORE_DB_DEV",  { default: "dev-db" });
-const DB_PROD = defineString("FIRESTORE_DB_PROD", { default: "prod"   });
+// Cloud Functions operate on the single Firestore database selected by
+// VITE_FIREBASE_DB in the root .env at deploy time (regenerated into
+// functions/.env by scripts/sync-functions-env.mjs). No default: a deploy
+// without the value must fail loudly rather than silently pick a database.
+// Switching VITE_FIREBASE_DB requires redeploying the functions.
+const DB = defineString("FIRESTORE_DATABASE_ID");
 
-const DATABASES = () => [DB_DEV.value(), DB_PROD.value()];
+const DATABASES = () => [DB.value()];
 const getDatabase = (id) => {
   if (typeof id !== "string" || !DATABASES().includes(id)) {
-    throw new HttpsError("invalid-argument", `Unknown database: ${id}`);
+    throw new HttpsError(
+      "invalid-argument",
+      `Unknown database: ${id}. Functions are configured for '${DB.value()}'. ` +
+      "Update VITE_FIREBASE_DB in the root .env and redeploy the functions."
+    );
   }
   return getFirestore(app, id);
 };
 const databaseIdFrom = (data, fallback) => {
   const id = typeof data?.databaseId === "string" ? data.databaseId : fallback;
   if (!DATABASES().includes(id)) {
-    throw new HttpsError("invalid-argument", `Unknown database: ${id}`);
+    throw new HttpsError(
+      "invalid-argument",
+      `Unknown database: ${id}. Functions are configured for '${DB.value()}'. ` +
+      "Update VITE_FIREBASE_DB in the root .env and redeploy the functions."
+    );
   }
   return id;
 };
@@ -185,7 +193,7 @@ async function writeAudit(databaseId, actorId, action, entityId, details) {
 exports.createManagedUser = onCall(async (request) => {
   try {
   requireAdmin(request);
-  const databaseId = databaseIdFrom(request.data, DB_DEV.value());
+  const databaseId = databaseIdFrom(request.data, DB.value());
   const { email, password } = request.data || {};
   if (typeof email !== "string" || !EMAIL_RE.test(email) || email.length > 254) {
     throw new HttpsError("invalid-argument", "A valid email is required.");
@@ -265,7 +273,7 @@ exports.createManagedUser = onCall(async (request) => {
 
 exports.updateManagedUser = onCall(async (request) => {
   requireAdmin(request);
-  const databaseId = databaseIdFrom(request.data, DB_DEV.value());
+  const databaseId = databaseIdFrom(request.data, DB.value());
   const { uid } = request.data || {};
   if (typeof uid !== "string" || !uid) throw new HttpsError("invalid-argument", "A user ID is required.");
 
@@ -323,7 +331,7 @@ exports.updateManagedUser = onCall(async (request) => {
 
 exports.disableManagedUser = onCall(async (request) => {
   requireAdmin(request);
-  const databaseId = databaseIdFrom(request.data, DB_DEV.value());
+  const databaseId = databaseIdFrom(request.data, DB.value());
   const { uid } = request.data || {};
   if (typeof uid !== "string" || !uid || uid === request.auth.uid) {
     throw new HttpsError("invalid-argument", "A different user ID is required.");
@@ -338,7 +346,7 @@ exports.disableManagedUser = onCall(async (request) => {
 
 exports.removeLegacyPins = onCall(async (request) => {
   requireAdmin(request);
-  const databaseId = databaseIdFrom(request.data, DB_DEV.value());
+  const databaseId = databaseIdFrom(request.data, DB.value());
   const users = await getDatabase(databaseId).collection("users").get();
   const writer = getDatabase(databaseId).bulkWriter();
   let removed = 0;
@@ -365,7 +373,7 @@ exports.restorePunchFromBackup = onCall(async (request) => {
       throw new HttpsError("invalid-argument", "Valid userId is required");
     }
 
-    const databaseId = databaseIdFrom(request.data, DB_DEV.value());
+    const databaseId = databaseIdFrom(request.data, DB.value());
     const restoredData = await restoreFromLatestBackup(getDatabase(databaseId), userId);
 
     // Explicit audit entry with the true actor — the restore write itself
@@ -394,11 +402,8 @@ exports.restorePunchFromBackup = onCall(async (request) => {
   }
 });
 
-// Audit trigger — registered once per database. Each instance is pinned to
-// its own DB via the `database` param (resolved at deploy time from env) and
-// writes auditLogs back to that same DB, so dev and prod audit trails stay
-// fully isolated: a dev write can never produce a prod audit entry or vice
-// versa.
+// Audit trigger — pinned to the single database selected by VITE_FIREBASE_DB
+// at deploy time and writes auditLogs back to that same DB.
 function makeAuditHandler(dbParam) {
   return async (event) => {
     const collectionName = event.params.collectionName;
@@ -454,14 +459,9 @@ function makeAuditHandler(dbParam) {
   };
 }
 
-exports.auditBusinessWritesDevDb = onDocumentWrittenWithAuthContext(
-  { document: "{collectionName}/{documentId}", database: DB_DEV },
-  makeAuditHandler(DB_DEV)
-);
-
-exports.auditBusinessWritesProd = onDocumentWrittenWithAuthContext(
-  { document: "{collectionName}/{documentId}", database: DB_PROD },
-  makeAuditHandler(DB_PROD)
+exports.auditBusinessWrites = onDocumentWrittenWithAuthContext(
+  { document: "{collectionName}/{documentId}", database: DB },
+  makeAuditHandler(DB)
 );
 
 // ── Supplier portal ───────────────────────────────────────────────────────────
@@ -495,7 +495,7 @@ exports.updateSupplierOrder = onCall(async (request) => {
     const role = request.auth.token.role;
     const supplierId = request.auth.token.supplierId || null;
     const { orderId, patch, databaseId } = request.data || {};
-    const dbId = databaseIdFrom(request.data, DB_DEV.value());
+    const dbId = databaseIdFrom(request.data, DB.value());
     if (typeof orderId !== "string" || !orderId) {
       throw new HttpsError("invalid-argument", "An orderId is required.");
     }

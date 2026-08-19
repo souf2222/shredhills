@@ -1,28 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { canTransition, defaultDatabases, isKnownDatabase } = require("./supplierOrders");
-
-test("default databases are dev-db and prod", () => {
-  assert.deepEqual(defaultDatabases(), ["dev-db", "prod"]);
-});
-
-test("isKnownDatabase accepts dev-db and prod", () => {
-  assert.equal(isKnownDatabase("dev-db"), true);
-  assert.equal(isKnownDatabase("prod"), true);
-});
-
-test("isKnownDatabase rejects unknown or non-string ids", () => {
-  assert.equal(isKnownDatabase("staging"), false);
-  assert.equal(isKnownDatabase(""), false);
-  assert.equal(isKnownDatabase(null), false);
-  assert.equal(isKnownDatabase(undefined), false);
-  assert.equal(isKnownDatabase(123), false);
-});
-
-test("isKnownDatabase honors a custom known list", () => {
-  assert.equal(isKnownDatabase("eu-west", ["eu-west", "us-east"]), true);
-  assert.equal(isKnownDatabase("dev-db", ["eu-west", "us-east"]), false);
-});
+const { canTransition } = require("./supplierOrders");
 
 test("supplier can move paid -> in_production", () => {
   assert.deepEqual(canTransition("supplier", "paid", "in_production", false), { ok: true });

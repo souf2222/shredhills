@@ -16,6 +16,7 @@
     "start": "vite",
     "build": "vite build",
     "test": "vitest run",
+    "test:functions": "node --test functions/ tests/sync-functions-env.test.mjs",
     "prepare:functions-env": "node scripts/sync-functions-env.mjs",
     "test:rules": "firebase emulators:exec --only firestore \"node tests/firestore.rules.test.mjs\"",
     "test:punches": "firebase emulators:exec --only firestore \"node tests/punches.race.test.mjs\"",

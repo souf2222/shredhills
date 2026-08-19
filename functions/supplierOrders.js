@@ -54,28 +54,7 @@ function canTransition(role, from, to, hasLabel) {
   return { ok: true };
 }
 
-// Default database names. Overridable in functions/index.js via defineString
-// so the project layout can change without editing this pure module. Tests
-// use these defaults.
-const DEFAULT_DEV_DB  = "dev-db";
-const DEFAULT_PROD_DB = "prod";
-
-function defaultDatabases() {
-  return [DEFAULT_DEV_DB, DEFAULT_PROD_DB];
-}
-
-// Validate that a database id is one this project knows about. Pure so it
-// can be unit-tested without the Admin SDK. `known` defaults to the two
-// real database names.
-function isKnownDatabase(id, known = defaultDatabases()) {
-  return typeof id === "string" && known.includes(id);
-}
-
 module.exports = {
-  DEFAULT_DEV_DB,
-  DEFAULT_PROD_DB,
-  defaultDatabases,
-  isKnownDatabase,
   SUPPLIER_STATUSES,
   SUPPLIER_TRANSITIONS,
   SUPPLIER_ALLOWED_NEXT,
