@@ -5,6 +5,7 @@ const { HttpsError, onCall } = require("firebase-functions/v2/https");
 const { onDocumentWrittenWithAuthContext } = require("firebase-functions/v2/firestore");
 const { defineString } = require("firebase-functions/params");
 const { punchSessionAuditAction } = require("./audit");
+const { backupPunchData } = require("./punch-backup");
 const {
   SUPPLIER_STATUSES,
   SUPPLIER_TRANSITIONS,
@@ -131,7 +132,39 @@ function sanitizeAccess(data, supplierId) {
     }
     // Suppliers carry no fine-grained permissions. Their scope is the
     // supplierId claim, enforced by Firestore and Storage rules.
-    return { role: "supplier", supplierId, permissions: {} };
+    return { role: "supplier", supplierId, permissions: {  }
+}
+
+// ── Punch Data Restore Function ───────────────────────────────────────────────
+const { restoreFromLatestBackup } = require("./punch-backup");
+
+/**
+ * Admin function to restore punch data from latest backup
+ */
+exports.restorePunchFromBackup = onCall(async (request) => {
+  try {
+    requireAdmin(request);
+    const { userId } = request.data || {};
+    
+    if (typeof userId !== "string" || userId.length === 0) {
+      throw new HttpsError("invalid-argument", "Valid userId is required");
+    }
+    
+    const databaseId = databaseIdFrom(request.data, DB_DEV.value());
+    const restoredData = await restoreFromLatestBackup(databaseId, userId);
+    
+    return { 
+      success: true, 
+      message: `Punch data restored for user ${userId}`,
+      restoredSessionsCount: restoredData.sessions?.length || 0
+    };
+    
+  } catch (error) {
+    console.error("restorePunchFromBackup failed:", error);
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError("internal", "Failed to restore punch data from backup");
+  }
+});;
   }
 
   const permissions = {};
@@ -221,7 +254,19 @@ exports.createManagedUser = onCall(async (request) => {
       createdAt: FieldValue.serverTimestamp(),
     });
     if (access.role !== "supplier") {
-      await getDatabase(databaseId).collection("punches").doc(user.uid).set({ sessions: [] });
+      // SAFEGUARD: Check if punch document already exists before overwriting
+      const existingPunchDoc = await getDatabase(databaseId).collection("punches").doc(user.uid).get();
+      if (existingPunchDoc.exists()) {
+        console.warn(`⚠️ WARNING: Punch document already exists for new user ${user.uid}. This suggests the user account may have been recreated. Existing punch data will be preserved.`);
+        // Don't overwrite existing punch data - just ensure it has valid structure
+        const existingData = existingPunchDoc.data();
+        if (!Array.isArray(existingData.sessions)) {
+          await getDatabase(databaseId).collection("punches").doc(user.uid).set({ sessions: [] });
+        }
+        // If sessions array exists, preserve it
+      } else {
+        await getDatabase(databaseId).collection("punches").doc(user.uid).set({ sessions: [] });
+      }
     }
     if (supplierRef) {
       await supplierRef.set({ linkedUid: user.uid, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
@@ -359,6 +404,16 @@ function makeAuditHandler(dbParam) {
     const documentAction = !before?.exists ? "create" : !after?.exists ? "delete" : "update";
     const beforeData = before?.data() || {};
     const afterData = after?.data() || {};
+    
+    // 🔒 ADD BACKUP LOGIC: Backup punch data before any write operation
+    if (collectionName === "punches" && before?.exists) {
+      try {
+        await backupPunchData(dbParam.value(), event.params.documentId, beforeData);
+      } catch (backupError) {
+        console.warn(`⚠️ Punch backup failed but continuing:`, backupError.message);
+      }
+    }
+    
     const sessionAction = documentAction === "update" && collectionName === "punches"
       ? punchSessionAuditAction(beforeData, afterData)
       : null;

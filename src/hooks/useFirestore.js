@@ -245,11 +245,17 @@ export function useFirestore(authUser, auditActor) {
 
         if (punchDoc.exists()) {
           const data = punchDoc.data();
-          serverSessions = Array.isArray(data.sessions) ? data.sessions.map(s => ({
-            ...s,
-            punchIn: toMs(s.punchIn),
-            punchOut: s.punchOut ? toMs(s.punchOut) : null
-          })) : [];
+          // SAFEGUARD: Ensure sessions array exists and is valid
+          if (!Array.isArray(data.sessions)) {
+            console.warn(`⚠️ Punch document for ${empId} has invalid sessions structure. Creating empty array.`);
+            serverSessions = [];
+          } else {
+            serverSessions = data.sessions.map(s => ({
+              ...s,
+              punchIn: toMs(s.punchIn),
+              punchOut: s.punchOut ? toMs(s.punchOut) : null
+            }));
+          }
 
           const todayStart = dayStart(Date.now());
 
