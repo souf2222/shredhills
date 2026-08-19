@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "../../components/PageHeader";
+import { AUDIT_LOGS_PAGE_SIZE } from "../constants";
+import { paginate } from "../../utils/pagination";
 
 const ACTIONS = {
   create: { label: "Creation", color: "#34C759" },
@@ -43,11 +45,15 @@ function AuditDetails({ entry }) {
   );
 }
 
-export function AuditTrailSection({ auditLogs }) {
+export function AuditTrailSection({ auditLogs, hasMore = false, onLoadMore }) {
   const [action, setAction] = useState("all");
   const [actor, setActor] = useState("all");
   const [collection, setCollection] = useState("all");
   const [openId, setOpenId] = useState(null);
+  const [page, setPage] = useState(1);
+
+  // Filters change the result set: always restart from the first page.
+  useEffect(() => { setPage(1); }, [action, actor, collection]);
 
   const actors = [...new Set(auditLogs.map(entry => entry.actorName).filter(Boolean))].sort();
   const collections = [...new Set(auditLogs.map(entry => entry.collection).filter(Boolean))].sort();
@@ -56,6 +62,15 @@ export function AuditTrailSection({ auditLogs }) {
     (actor === "all" || entry.actorName === actor) &&
     (collection === "all" || entry.collection === collection)
   );
+  const { page: safePage, totalPages, pageEntries, hasPrev, hasNext } =
+    paginate(entries, page, AUDIT_LOGS_PAGE_SIZE, hasMore);
+
+  const goNext = () => {
+    if (safePage < totalPages) { setPage(safePage + 1); return; }
+    // Last loaded page: pull one more page of logs from Firestore, then
+    // move forward (the listener delivers the new entries).
+    if (hasMore && onLoadMore) { onLoadMore(); setPage(safePage + 1); }
+  };
 
   return (
     <div>
@@ -79,27 +94,42 @@ export function AuditTrailSection({ auditLogs }) {
       {entries.length === 0 ? (
         <div style={styles.empty}>Aucune activite ne correspond aux filtres selectionnes.</div>
       ) : (
-        <div style={styles.list}>
-          {entries.map(entry => {
-            const actionInfo = ACTIONS[entry.action] || { label: entry.action, color: "#6D6D72" };
-            const isOpen = openId === entry.id;
-            return (
-              <article key={entry.id} style={styles.item}>
-                <button type="button" onClick={() => setOpenId(isOpen ? null : entry.id)} style={styles.summary} aria-expanded={isOpen}>
-                  <div style={styles.main}>
-                    <span style={{ ...styles.badge, background: actionInfo.color }}>{actionInfo.label}</span>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={styles.label}>{entry.entityLabel || `${entry.collection} #${entry.entityId}`}</div>
-                      <div style={styles.meta}>{entry.actorName || "Utilisateur inconnu"} · {dateLabel(entry.createdAt)}</div>
+        <>
+          <div style={styles.list}>
+            {pageEntries.map(entry => {
+              const actionInfo = ACTIONS[entry.action] || { label: entry.action, color: "#6D6D72" };
+              const isOpen = openId === entry.id;
+              return (
+                <article key={entry.id} style={styles.item}>
+                  <button type="button" onClick={() => setOpenId(isOpen ? null : entry.id)} style={styles.summary} aria-expanded={isOpen}>
+                    <div style={styles.main}>
+                      <span style={{ ...styles.badge, background: actionInfo.color }}>{actionInfo.label}</span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={styles.label}>{entry.entityLabel || `${entry.collection} #${entry.entityId}`}</div>
+                        <div style={styles.meta}>{entry.actorName || "Utilisateur inconnu"} · {dateLabel(entry.createdAt)}</div>
+                      </div>
                     </div>
-                  </div>
-                  <span style={styles.expand}>{isOpen ? "Masquer" : "Details"}</span>
-                </button>
-                {isOpen && <div style={styles.details}><AuditDetails entry={entry} /></div>}
-              </article>
-            );
-          })}
-        </div>
+                    <span style={styles.expand}>{isOpen ? "Masquer" : "Details"}</span>
+                  </button>
+                  {isOpen && <div style={styles.details}><AuditDetails entry={entry} /></div>}
+                </article>
+              );
+            })}
+          </div>
+          {(totalPages > 1 || hasMore) && (
+            <div style={styles.pagination}>
+              <button type="button" className="btn btn-outline" style={styles.pageBtn} disabled={!hasPrev} onClick={() => setPage(safePage - 1)}>
+                ← Precedent
+              </button>
+              <span style={styles.pageInfo}>
+                Page {safePage} / {totalPages}{hasMore ? "+" : ""}
+              </span>
+              <button type="button" className="btn btn-outline" style={styles.pageBtn} disabled={!hasNext} onClick={goNext}>
+                Suivant →
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -111,6 +141,9 @@ const styles = {
   filters: { display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 },
   select: { width: "auto", minWidth: 170, flex: "1 1 170px" },
   list: { display: "grid", gap: 10 },
+  pagination: { display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginTop: 18 },
+  pageBtn: { padding: "9px 16px" },
+  pageInfo: { color: "#8E8E93", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" },
   item: { background: "white", border: "1px solid #E5E5EA", borderRadius: 14, overflow: "hidden" },
   summary: { width: "100%", border: 0, background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 16px", textAlign: "left" },
   main: { display: "flex", alignItems: "center", gap: 12, minWidth: 0 },

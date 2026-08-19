@@ -50,6 +50,7 @@ export function DashboardPage() {
   const fsData = useFirestore(firebaseUser, userProfile);
   const {
     users, orders, stops, punches, purchases, events, categories, contacts, acquisitions, auditLogs,
+    auditHasMore, loadMoreAuditLogs,
     supplierOrders, suppliers, punchesLoading,
     addOrder, updateOrder, deleteOrder,
     addStop, updateStop, deleteStop,
@@ -547,7 +548,7 @@ export function DashboardPage() {
         )}
 
         {tab === "historique" && can("canManageUsers") && (
-          <AuditTrailSection auditLogs={auditLogs} />
+          <AuditTrailSection auditLogs={auditLogs} hasMore={auditHasMore} onLoadMore={loadMoreAuditLogs} />
         )}
 
         {tab === "mes-depenses" && can("canSubmitExpenses") && (

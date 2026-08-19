@@ -4,6 +4,7 @@ import {
   collection, doc, onSnapshot, serverTimestamp, query, where, orderBy, limit, writeBatch, runTransaction
 } from "firebase/firestore";
 import { db, uploadExpensePhoto, deleteStorageFile } from "../firebase";
+import { AUDIT_LOGS_PAGE_SIZE } from "../dashboard/constants";
 import {
   toMs, sanitizeSession, normalizeSessions, autoCloseOrphans,
   findOpenSession, findOverlap, validateSession, MAX_SESSIONS,
@@ -30,6 +31,9 @@ export function useFirestore(authUser, auditActor) {
   const [contacts,    setContacts]    = useState([]);
   const [acquisitions, setAcquisitions] = useState([]);
   const [auditLogs,   setAuditLogs]   = useState([]);
+  // Number of audit entries fetched from Firestore; grows by one page each
+  // time the user navigates past the loaded window.
+  const [auditLimit,  setAuditLimit]  = useState(AUDIT_LOGS_PAGE_SIZE);
   const [supplierOrders, setSupplierOrders] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [loading,     setLoading]     = useState(true);
@@ -154,11 +158,13 @@ export function useFirestore(authUser, auditActor) {
     }
 
     return onSnapshot(
-      query(collection(db, "auditLogs"), orderBy("createdAt", "desc"), limit(100)),
+      query(collection(db, "auditLogs"), orderBy("createdAt", "desc"), limit(auditLimit)),
       snap => setAuditLogs(snap.docs.map(d => ({ ...d.data(), id: d.id }))),
       err => console.error("Firestore listener error (audit logs):", err)
     );
-  }, [authUid, canViewAudit]);
+  }, [authUid, canViewAudit, auditLimit]);
+
+  const loadMoreAuditLogs = () => setAuditLimit(l => l + AUDIT_LOGS_PAGE_SIZE);
 
   const createAudited = async (collectionName, data) => {
     const ref = doc(collection(db, collectionName));
@@ -466,6 +472,8 @@ export function useFirestore(authUser, auditActor) {
 
   return {
     users, orders, stops, punches, purchases, events, categories, contacts, acquisitions, auditLogs,
+    auditHasMore: auditLogs.length >= auditLimit,
+    loadMoreAuditLogs,
     supplierOrders, suppliers,
     loading,
     punchesLoading,

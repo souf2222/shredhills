@@ -19,6 +19,11 @@ export const PERMISSION_LABELS = {
   canSubmitAcquisitions: "Soumettre des demandes d'achat",
 };
 
+// ── Audit trail ───────────────────────────────────────────────────────────
+// The history section pages through audit logs 100 entries at a time; the
+// Firestore listener window grows on demand as the user navigates forward.
+export const AUDIT_LOGS_PAGE_SIZE = 100;
+
 // ── Supplier portal ──────────────────────────────────────────────────────
 // Status keys are shared between admin and portal UIs and must match the
 // transition graph in functions/index.js exactly.
