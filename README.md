@@ -117,6 +117,29 @@ Le routage est unifié dans `src/App.jsx` :
 ### 📅 Événements
 Calendrier partagé avec assignations utilisateurs (voir `src/pages/EventsPage.jsx`).
 
+### 🔒 Pointage (Punch In/Out) - Système Bulletproof
+Le système de pointage a été renforcé pour éviter toute perte de données :
+
+- **Transactions atomiques** : Toutes les opérations de pointage se font via des transactions Firestore
+- **Prévention des doubles pointages** : Impossible de pointer deux fois sans avoir pointé out
+- **Sauvegarde automatique** : Une sauvegarde est créée avant chaque modification des données de pointage
+- **Restauration d'urgence** : Fonction d'administration pour restaurer les données depuis la dernière sauvegarde
+- **Détection intelligente** : Le système détecte automatiquement les sessions orphelines et les ferme à la fin de la journée
+
+Les données de pointage sont stockées dans la collection `punches` avec une structure sécurisée :
+```javascript
+{
+  sessions: [
+    {
+      id: "P-UNIQUE_ID",
+      punchIn: 1787141014031,  // timestamp en millisecondes
+      punchOut: 1787145600000, // null si session active
+      note: "Diner"            // obligatoire pour les modifications
+    }
+  ]
+}
+```
+
 ---
 
 ## 📁 Structure du projet
@@ -182,6 +205,23 @@ shredhills/
 | `npm start`      | Lance l'app en dev sur http://localhost:3000 |
 | `npm run build`  | Build de production dans `build/`        |
 | `npm test`       | Lance les tests (CRA / react-scripts)    |
+
+---
+
+## 💾 Sauvegarde des données de pointage
+
+Le système inclut une fonctionnalité de sauvegarde automatique des données de pointage :
+- **Collection de sauvegarde** : `punch_backups` 
+- **Conservation** : Les 10 dernières sauvegardes sont conservées par utilisateur
+- **Déclenchement** : Une sauvegarde est créée avant chaque modification des données de pointage
+- **Restauration** : Utilisez la fonction Cloud `restorePunchFromBackup` pour restaurer les données
+
+Pour restaurer manuellement les données de pointage d'un utilisateur :
+```javascript
+// Appel depuis un environnement admin
+const restoreFunction = functions.httpsCallable('restorePunchFromBackup');
+await restoreFunction({ userId: "USER_ID" });
+```
 
 ---
 
