@@ -33,10 +33,14 @@ export function useFirestore(authUser, auditActor) {
   const [supplierOrders, setSupplierOrders] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [loading,     setLoading]     = useState(true);
+  const [punchesLoading, setPunchesLoading] = useState(true);
 
   const authUid = authUser?.uid || null;
   const canViewAudit = auditActor?.role === "admin" || !!auditActor?.permissions?.canManageUsers;
   const can = (permission) => auditActor?.role === "admin" || !!auditActor?.permissions?.[permission];
+  // Serialize permissions so token refreshes (which recreate the claims
+  // object) don't tear down and re-attach every Firestore listener.
+  const permissionsKey = JSON.stringify(auditActor?.permissions ?? {});
 
   useEffect(() => {
     // Don't subscribe until the user is authenticated. Firestore rules require
@@ -45,6 +49,7 @@ export function useFirestore(authUser, auditActor) {
     // resulting in empty data until the user refreshes.
     if (!authUid) {
       setLoading(true);
+      setPunchesLoading(true);
       return;
     }
 
@@ -56,8 +61,8 @@ export function useFirestore(authUser, auditActor) {
       done();
     };
 
-    const listen = (label, source, setData) => {
-      listeners.push(onSnapshot(source, snap => { setData(snap); done(); }, onErr(label)));
+    const listen = (label, source, setData, onFirst) => {
+      listeners.push(onSnapshot(source, snap => { setData(snap); done(); onFirst?.(); }, onErr(label)));
     };
 
     listen("users", collection(db, "users"), snap => {
@@ -88,8 +93,8 @@ export function useFirestore(authUser, auditActor) {
         } else {
           setPunches(snap.exists() ? { [snap.id]: snap.data().sessions || [] } : {});
         }
-      });
-    } else setPunches({});
+      }, () => setPunchesLoading(false));
+    } else { setPunches({}); setPunchesLoading(false); }
 
     if (can("canManageExpenses") || can("canSubmitExpenses")) {
       const source = can("canManageExpenses")
@@ -137,7 +142,7 @@ export function useFirestore(authUser, auditActor) {
 
     if (listeners.length === 0) setLoading(false);
     return () => listeners.forEach(unsub => unsub());
-  }, [authUid, auditActor?.role, auditActor?.permissions]);
+  }, [authUid, auditActor?.role, permissionsKey]);
 
   useEffect(() => {
     if (!authUid || !canViewAudit) {
@@ -460,6 +465,7 @@ export function useFirestore(authUser, auditActor) {
     users, orders, stops, punches, purchases, events, categories, contacts, acquisitions, auditLogs,
     supplierOrders, suppliers,
     loading,
+    punchesLoading,
     saveUser, updateUser, deleteUser,
     addOrder, updateOrder, deleteOrder,
     addStop, updateStop, deleteStop,

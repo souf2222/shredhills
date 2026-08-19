@@ -16,6 +16,7 @@ import {
   findOverlap,
   validateSession,
   newPunchId,
+  resolveClockState,
 } from "./punchLogic";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -258,5 +259,65 @@ describe("newPunchId", () => {
 
   it("keeps the P- prefix format", () => {
     expect(newPunchId()).toMatch(/^P-[0-9A-Z]+-[0-9A-Z]{6}$/);
+  });
+});
+
+describe("resolveClockState", () => {
+  const now = Date.now();
+  const today = dayStart(now);
+  const yesterday = today - DAY;
+  const closed = { id: "a", punchIn: today + 3600_000, punchOut: today + 3700_000 };
+  const open = { id: "b", punchIn: today + 7200_000, punchOut: null };
+  const oldOpen = { id: "c", punchIn: yesterday + 3600_000, punchOut: null };
+
+  it("derives the active session from today's listener state", () => {
+    const state = resolveClockState([closed, open, oldOpen], null, today);
+    expect(state.isClockedIn).toBe(true);
+    expect(state.activeSess.id).toBe("b");
+    expect(state.todaySessions.map(s => s.id)).toEqual(["a", "b"]);
+  });
+
+  it("reports clocked-out when nothing is open today", () => {
+    const state = resolveClockState([closed], null, today);
+    expect(state.isClockedIn).toBe(false);
+    expect(state.activeSess).toBeNull();
+  });
+
+  it("treats null/empty sessions as clocked out", () => {
+    expect(resolveClockState(null, null, today).isClockedIn).toBe(false);
+    expect(resolveClockState([], null, today).isClockedIn).toBe(false);
+  });
+
+  it("optimistic punch-in makes the user clocked in before the listener catches up", () => {
+    const optimistic = { mode: "in", session: { id: "opt", punchIn: now, punchOut: null } };
+    const state = resolveClockState([closed], optimistic, today);
+    expect(state.isClockedIn).toBe(true);
+    expect(state.activeSess.id).toBe("opt");
+  });
+
+  it("listener state wins over optimistic punch-in once the session appears", () => {
+    const optimistic = { mode: "in", session: { id: "opt", punchIn: now, punchOut: null } };
+    const state = resolveClockState([closed, open], optimistic, today);
+    expect(state.activeSess.id).toBe("b");
+  });
+
+  it("optimistic punch-out hides the active session while the write is in flight", () => {
+    const state = resolveClockState([closed, open], { mode: "out", sessionId: "b" }, today);
+    expect(state.isClockedIn).toBe(false);
+    expect(state.activeSess).toBeNull();
+    // The session still counts in today's (closed) totals.
+    expect(state.todaySessions).toHaveLength(2);
+  });
+
+  it("optimistic punch-out only hides the exact session it targets", () => {
+    const state = resolveClockState([closed, open], { mode: "out", sessionId: "zzz" }, today);
+    expect(state.isClockedIn).toBe(true);
+    expect(state.activeSess.id).toBe("b");
+  });
+
+  it("optimistic punch-in is ignored when a session is already active", () => {
+    const optimistic = { mode: "in", session: { id: "opt", punchIn: now, punchOut: null } };
+    const state = resolveClockState([open], optimistic, today);
+    expect(state.activeSess.id).toBe("b");
   });
 });

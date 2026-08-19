@@ -16,7 +16,7 @@ import {
   reauthenticateWithCredential,
   sendPasswordResetEmail
 } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { getFunctions, httpsCallable } from "firebase/functions";
 const requiredEnv = (name) => {
@@ -36,7 +36,13 @@ const firebaseConfig = {
 
 const app     = initializeApp(firebaseConfig);
 export const auth    = getAuth(app);
-export const db      = getFirestore(app, requiredEnv("VITE_FIREBASE_DB"));
+// Persistent IndexedDB cache: reloads and post-login loads serve data from
+// the local cache instantly, then reconcile with the server. Multi-tab safe.
+export const db = initializeFirestore(
+  app,
+  { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) },
+  requiredEnv("VITE_FIREBASE_DB")
+);
 export const storage = getStorage(app);
 const functions = getFunctions(app);
 

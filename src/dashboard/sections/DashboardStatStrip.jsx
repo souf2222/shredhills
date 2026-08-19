@@ -1,7 +1,7 @@
 // src/dashboard/sections/DashboardStatStrip.jsx
-import { useState, useEffect } from "react";
-import { fmtMs, fmtHours, fmtTime, dayStart } from "../../utils/helpers";
-import { newPunchId } from "../../utils/punchLogic";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { fmtMs, dayStart } from "../../utils/helpers";
+import { newPunchId, resolveClockState } from "../../utils/punchLogic";
 
 const PUNCH_ERRORS = {
   ALREADY_ACTIVE_SESSION: "Tu es déjà en service",
@@ -11,7 +11,7 @@ const PUNCH_ERRORS = {
   SESSION_NOT_FOUND: "Session introuvable",
 };
 
-export function DashboardStatStrip({ events, orders, stops, users, punches, userProfile, addPunchSession, closePunchSession, showToast }) {
+export function DashboardStatStrip({ events, orders, stops, users, punches, userProfile, addPunchSession, closePunchSession, punchesLoading, showToast }) {
   const [, tick] = useState(0);
 
   useEffect(() => {
@@ -19,37 +19,61 @@ export function DashboardStatStrip({ events, orders, stops, users, punches, user
     return () => clearInterval(t);
   }, []);
 
-  const sessions      = punches[userProfile.id] || [];
-  const todayStart_   = dayStart(Date.now());
-  const todaySess     = sessions.filter(s => dayStart(s.punchIn) === todayStart_);
-  const activeSess    = todaySess.find(s => !s.punchOut) || null;
-  const isClockedIn   = !!activeSess;
+  // Optimistic punch state: survives until the Firestore listener confirms
+  // the write (state agrees) or the transaction fails (rollback). The ref
+  // guards against a stale override applied to newer listener data.
+  const [optimistic, setOptimistic] = useState(null);
+  const [pending, setPending] = useState(null); // "in" | "out" | null
+  const seqRef = useRef(0);
 
-  const todayDoneMs   = todaySess.filter(s => s.punchOut).reduce((a, s) => a + (s.punchOut - s.punchIn), 0);
-  const todayLiveMs   = activeSess ? Date.now() - activeSess.punchIn : 0;
+  const sessions = punches[userProfile.id] || [];
+  const { todaySessions, activeSess, isClockedIn } = resolveClockState(sessions, optimistic);
 
-  const punchIn = async () => {
+  const todayDoneMs = todaySessions.filter(s => s.punchOut).reduce((a, s) => a + (s.punchOut - s.punchIn), 0);
+  const todayLiveMs = activeSess ? Date.now() - activeSess.punchIn : 0;
+
+  const punchIn = useCallback(async () => {
+    if (pending) return;
+    const seq = ++seqRef.current;
     const session = { id: newPunchId(), punchIn: Date.now(), punchOut: null, note: "" };
+    setPending("in");
+    setOptimistic({ mode: "in", session });
     try {
       await addPunchSession(userProfile.id, session);
-      showToast("Punch in !");
     } catch (error) {
+      if (seqRef.current === seq) setOptimistic(null);
       showToast(PUNCH_ERRORS[error.message] || "Erreur lors du punch in");
       console.error("Punch in error:", error);
+    } finally {
+      if (seqRef.current === seq) setPending(null);
     }
-  };
+  }, [pending, userProfile.id, addPunchSession, showToast]);
 
-  const punchOut_ = async () => {
-    if (activeSess) {
-      try {
-        await closePunchSession(userProfile.id, activeSess.id);
-        showToast("Pause !");
-      } catch (err) {
-        showToast(PUNCH_ERRORS[err.message] || "Erreur lors du punch out");
-        console.error("Punch out error:", err);
-      }
+  const punchOut_ = useCallback(async () => {
+    if (pending || !activeSess) return;
+    const seq = ++seqRef.current;
+    const sessionId = activeSess.id;
+    setPending("out");
+    setOptimistic({ mode: "out", sessionId });
+    try {
+      await closePunchSession(userProfile.id, sessionId);
+    } catch (err) {
+      if (seqRef.current === seq) setOptimistic(null);
+      showToast(PUNCH_ERRORS[err.message] || "Erreur lors du punch out");
+      console.error("Punch out error:", err);
+    } finally {
+      if (seqRef.current === seq) setPending(null);
     }
-  };
+  }, [pending, activeSess, userProfile.id, closePunchSession, showToast]);
+
+  // Listener state has caught up with the override (session appeared /
+  // disappeared): drop it so pure listener state rules again.
+  useEffect(() => {
+    if (!optimistic) return;
+    const listenerActive = todaySessions.some(s => s.punchOut == null);
+    if (optimistic.mode === "in" && listenerActive) setOptimistic(null);
+    if (optimistic.mode === "out" && !listenerActive) setOptimistic(null);
+  }, [optimistic, todaySessions]);
 
   return (
     <div>
@@ -67,7 +91,7 @@ export function DashboardStatStrip({ events, orders, stops, users, punches, user
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 15, color: "#1C1C1E", whiteSpace: "nowrap" }}>
-              {isClockedIn ? "Tu es en service" : "Hors service"}
+              {punchesLoading ? "Synchronisation…" : isClockedIn ? "Tu es en service" : "Hors service"}
             </div>
             <div style={{ fontSize: 13, color: "#8E8E93", marginTop: 1 }}>
 
@@ -84,9 +108,10 @@ export function DashboardStatStrip({ events, orders, stops, users, punches, user
           <button
             className={isClockedIn ? "btn-clock-out" : "btn-clock-in"}
             onClick={isClockedIn ? punchOut_ : punchIn}
-            style={{ padding: "10px 22px", fontSize: 14, borderRadius: 12, boxShadow: "none" }}
+            disabled={!!pending || punchesLoading}
+            style={{ padding: "10px 22px", fontSize: 14, borderRadius: 12, boxShadow: "none", opacity: (pending || punchesLoading) ? 0.5 : 1 }}
           >
-            {isClockedIn ? "⏹" : "▶"}
+            {pending || punchesLoading ? "…" : isClockedIn ? "⏹" : "▶"}
           </button>
         </div>
       </div>

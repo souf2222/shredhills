@@ -50,7 +50,7 @@ export function DashboardPage() {
   const fsData = useFirestore(firebaseUser, userProfile);
   const {
     users, orders, stops, punches, purchases, events, categories, contacts, acquisitions, auditLogs,
-    supplierOrders, suppliers,
+    supplierOrders, suppliers, punchesLoading,
     addOrder, updateOrder, deleteOrder,
     addStop, updateStop, deleteStop,
     addExpense, updateExpense, approveExpense: fsApproveExpense, refuseExpense: fsRefuseExpense, deleteExpense,
@@ -474,6 +474,7 @@ export function DashboardPage() {
             events={events} orders={orders} stops={stops} users={users} punches={punches} userProfile={userProfile}
             addPunchSession={addPunchSession}
             closePunchSession={closePunchSession}
+            punchesLoading={punchesLoading}
             showToast={showToast}
           />
         )}

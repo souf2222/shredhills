@@ -114,6 +114,35 @@ export function validateSession(session, now = Date.now()) {
   return null;
 }
 
+// Resolve the clock widget state from the listener's sessions plus an
+// optional optimistic override, so the UI flips instantly on click instead
+// of waiting for the Firestore round trip.
+//
+//   optimistic: { mode: "in", session }  — punch-in in flight: the session
+//             is treated as active even though the listener hasn't seen it.
+//   optimistic: { mode: "out", sessionId } — punch-out in flight: the
+//             session is hidden as if already closed.
+//
+// The override is advisory only: the listener state wins as soon as it
+// agrees (the optimistic session appears / the closed session updates),
+// and the caller drops the override on error.
+export function resolveClockState(sessions, optimistic = null, todayStart = dayStart(Date.now())) {
+  const today = (sessions || []).filter(s => dayStart(s.punchIn) === todayStart);
+  let activeSess = today.find(s => s.punchOut == null) || null;
+
+  if (optimistic?.mode === "in" && !activeSess) {
+    activeSess = optimistic.session;
+  } else if (optimistic?.mode === "out" && activeSess?.id === optimistic.sessionId) {
+    activeSess = null;
+  }
+
+  return {
+    todaySessions: today,
+    activeSess,
+    isClockedIn: !!activeSess,
+  };
+}
+
 // Collision-proof session id: timestamp base36 + random suffix, so two
 // sessions created in the same millisecond still get distinct ids.
 export function newPunchId() {
