@@ -69,6 +69,16 @@ node functions/scripts/revoke-all-sessions.mjs            # déconnecter tout le
 
 Les sessions actives sont invalidées au prochain rafraîchissement du token (sous 1 heure).
 
+Si la modification d'un pointage échoue avec `INVALID_SESSION` (données créées avant le durcissement du modèle), migrer les sessions sans id vers le nouveau schéma :
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS=/chemin/vers/service-account.json
+node functions/scripts/migrate-punch-ids.mjs --dry-run  # compter d'abord
+node functions/scripts/migrate-punch-ids.mjs            # migrer
+```
+
+Le script est idempotent et cible la base sélectionnée par `VITE_FIREBASE_DB` dans `.env`.
+
 ### 4. Déployer les contrôles de sécurité
 
 ```bash

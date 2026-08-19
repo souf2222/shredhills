@@ -4,6 +4,27 @@ const { FieldValue } = require("firebase-admin/firestore");
 
 const BACKUPS_KEPT_PER_USER = 10;
 
+// Same collision-proof id scheme as newPunchId() in src/utils/punchLogic.js
+// (ESM, not requirable here) — keep the two in sync.
+const newSessionId = () =>
+  `P-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+
+// Backups taken before the hardened punch model may contain sessions with
+// no id; restoring them verbatim would make those sessions un-editable and
+// un-deletable (INVALID_SESSION / SESSION_NOT_FOUND). Assign fresh ids to
+// any restored session missing one, skipping nothing else.
+function ensureSessionIds(sessions) {
+  if (!Array.isArray(sessions)) return sessions;
+  const ids = new Set(sessions.filter((s) => typeof s?.id === "string" && s.id).map((s) => s.id));
+  return sessions.map((s) => {
+    if (typeof s?.id === "string" && s.id) return s;
+    let id = newSessionId();
+    while (ids.has(id)) id = newSessionId();
+    ids.add(id);
+    return { ...s, id };
+  });
+}
+
 /**
  * Creates a backup of punch data before any modification.
  * @param {FirebaseFirestore.Firestore} db - Database instance the punches
@@ -58,8 +79,12 @@ async function restoreFromLatestBackup(db, userId) {
     const latestBackup = snapshot.docs[0].data();
     const originalData = latestBackup.originalData;
 
-    // Restore to main punches collection in the same database
-    await db.collection('punches').doc(userId).set(originalData);
+    // Restore to main punches collection in the same database, ensuring
+    // every restored session carries an id (older snapshots may predate
+    // the id requirement).
+    await db.collection('punches').doc(userId).set({
+      sessions: ensureSessionIds(originalData.sessions || []),
+    });
 
     console.log(`✅ Punch data restored from backup for user ${userId}`);
     return originalData;
