@@ -60,8 +60,8 @@ export function AuthProvider({ children }) {
 
   const can = (permission) => {
     if (!userProfile) return false;
-    // Admin always has all permissions
-    if (userProfile.role === "admin") return true;
+    // Managing users is reserved to admins — derived from the role, not the claims.
+    if (permission === "canManageUsers") return userProfile.role === "admin";
     return !!userProfile.permissions?.[permission];
   };
 

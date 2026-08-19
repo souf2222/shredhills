@@ -187,6 +187,12 @@ export function DashboardPage() {
   // --- Event handlers ---
   const handleSaveUser = async (updated) => {
     await updateManagedUser({ uid: updated.id, ...updated });
+    // Custom claims ride the ID token, which is cached for up to an hour.
+    // When editing our own account, force a token refresh so the new
+    // permissions apply immediately (onIdTokenChanged picks up new claims).
+    if (updated.id === userProfile?.id) {
+      try { await firebaseUser?.getIdToken(true); } catch { /* keep old claims */ }
+    }
     showToast("Utilisateur mis à jour");
   };
   const handleCreateUser = async (user) => {

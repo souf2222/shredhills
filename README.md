@@ -103,7 +103,8 @@ L'app combine trois axes :
 - **`jobs`** : un ou plusieurs métiers — `admin`, `accountant`, `employee`, `driver`.
   Détermine quelle interface est affichée.
 - **`permissions`** : flags fins (`canManageOrders`, `canManageEvents`, `canViewReports`, `canViewTasks`, `canClockIn`, `canSubmitExpenses`, …).
-  Un `admin` les a toutes implicitement.
+  Les permissions s'appliquent aussi aux `admin` : elles sont configurables dans la modale utilisateur et servies via les custom claims.
+  Exception : `canManageUsers` (gestion des utilisateurs et historique) est réservé au rôle `admin` — il ne peut pas être décoché ni accordé à un autre rôle.
 
 Le routage est unifié dans `src/App.jsx` :
 - Quel que soit le rôle, tout le monde arrive sur **DashboardPage**

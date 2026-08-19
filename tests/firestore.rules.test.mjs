@@ -25,6 +25,11 @@ const supplierClaims = {
 
 const adminClaims = {
   role: "admin",
+  permissions: { canManageSupplierOrders: true },
+};
+
+const strippedAdminClaims = {
+  role: "admin",
   permissions: {},
 };
 
@@ -60,6 +65,7 @@ try {
   await assertFails(getDoc(doc(unauthenticated, "users", "employee")));
   await assertFails(updateDoc(doc(employee, "users", "employee"), { role: "admin" }));
   await assertFails(setDoc(doc(employee, "auditLogs", "forged"), { actorId: "employee" }));
+  await assertFails(getDoc(doc(employee, "auditLogs", "any")));
   await assertFails(getDoc(doc(employee, "purchases", "other-expense")));
   await assertFails(setDoc(doc(employee, "purchases", "forged-expense"), {
     empId: "other-user",
@@ -69,6 +75,17 @@ try {
     empId: "employee",
     status: "pending",
   }));
+
+  // ── Audit logs are reserved to admins ─────────────────────────────────────
+  // canManageUsers is derived from the role: not even a user carrying a stale
+  // canManageUsers claim may read the logs.
+  const historyUser = testEnv.authenticatedContext("history-user", {
+    role: "user",
+    permissions: { canManageUsers: true },
+  }).firestore();
+  await assertFails(getDoc(doc(historyUser, "auditLogs", "any")));
+  const strippedAdmin = testEnv.authenticatedContext("audit-admin", strippedAdminClaims).firestore();
+  await assertSucceeds(getDoc(doc(strippedAdmin, "auditLogs", "any")));
 
   // ── Supplier isolation (D1, D2, D3) ───────────────────────────────────────
   // D1: a supplier cannot read the internal users directory (only their own).
@@ -94,10 +111,16 @@ try {
   const claimlessSupplier = testEnv.authenticatedContext("claimless", { role: "supplier", permissions: {} }).firestore();
   await assertFails(getDoc(doc(claimlessSupplier, "supplierOrders", "own-order")));
 
-  // Admin full access to supplierOrders & suppliers.
+  // Admin with the right permission has full access to supplierOrders & suppliers.
   const admin = testEnv.authenticatedContext("admin", adminClaims).firestore();
   await assertSucceeds(getDoc(doc(admin, "supplierOrders", "own-order")));
   await assertSucceeds(getDoc(doc(admin, "suppliers", "seatcraft")));
+
+  // Admin permissions are enforced too: an admin without
+  // canManageSupplierOrders cannot read the supplier data.
+  const strippedAdmin = testEnv.authenticatedContext("stripped-admin", strippedAdminClaims).firestore();
+  await assertFails(getDoc(doc(strippedAdmin, "supplierOrders", "own-order")));
+  await assertFails(getDoc(doc(strippedAdmin, "suppliers", "seatcraft")));
 
   console.log("Firestore security rules tests passed");
 } finally {

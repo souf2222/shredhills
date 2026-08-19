@@ -21,7 +21,8 @@ const testEnv = await initializeTestEnvironment({
 const clockInClaims = { role: "user", permissions: { canClockIn: true } };
 const noClockClaims = { role: "user", permissions: { canSubmitExpenses: true } };
 const managerClaims = { role: "user", permissions: { canManageReports: true } };
-const adminClaims = { role: "admin", permissions: {} };
+const adminClaims = { role: "admin", permissions: { canManageReports: true } };
+const strippedAdminClaims = { role: "admin", permissions: {} };
 
 const now = Date.now();
 const validSessions = [
@@ -76,6 +77,14 @@ try {
   await assertSucceeds(deleteDoc(doc(manager, "punches", "clocker")));
   await assertSucceeds(setDoc(doc(admin, "punches", "clocker"), { sessions: validSessions }));
   await assertSucceeds(deleteDoc(doc(admin, "punches", "clocker")));
+
+  // ── Admin permissions are enforced too ─────────────────────────────────────
+  // An admin whose canManageReports permission is unchecked has no more access
+  // to other people's punch documents than a regular user.
+  const strippedAdmin = testEnv.authenticatedContext("stripped-admin", strippedAdminClaims).firestore();
+  await assertFails(getDoc(doc(strippedAdmin, "punches", "other")));
+  await assertFails(setDoc(doc(strippedAdmin, "punches", "other"), { sessions: [] }));
+  await assertFails(deleteDoc(doc(strippedAdmin, "punches", "other")));
 
   console.log("Punch security rules tests passed");
 } finally {

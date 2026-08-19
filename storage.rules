@@ -6,12 +6,10 @@ service firebase.storage {
     }
 
     function isExpenseManager() {
-      return signedIn() && (
-        request.auth.token.role == "admin" ||
-        (request.auth.token.permissions != null &&
-         request.auth.token.permissions.keys().hasAll(["canManageExpenses"]) &&
-         request.auth.token.permissions.canManageExpenses == true)
-      );
+      return signedIn() &&
+        request.auth.token.permissions != null &&
+        request.auth.token.permissions.keys().hasAll(["canManageExpenses"]) &&
+        request.auth.token.permissions.canManageExpenses == true;
     }
 
     // Receipts are owned by their submitter. A manager may access every
@@ -44,12 +42,10 @@ service firebase.storage {
     // the practical risk is low. Do not reuse supplierIds across environments
     // if you need strict file isolation.
     function isSupplierManager() {
-      return signedIn() && (
-        request.auth.token.role == "admin" ||
-        (request.auth.token.permissions != null &&
-         request.auth.token.permissions.keys().hasAll(["canManageSupplierOrders"]) &&
-         request.auth.token.permissions.canManageSupplierOrders == true)
-      );
+      return signedIn() &&
+        request.auth.token.permissions != null &&
+        request.auth.token.permissions.keys().hasAll(["canManageSupplierOrders"]) &&
+        request.auth.token.permissions.canManageSupplierOrders == true;
     }
 
     function isSupplierForStoragePath(supplierId) {

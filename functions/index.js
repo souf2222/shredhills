@@ -145,7 +145,11 @@ function sanitizeAccess(data, supplierId) {
 
   const permissions = {};
   for (const permission of PERMISSIONS) {
-    permissions[permission] = data.role === "admin" || data.permissions?.[permission] === true;
+    // Managing users is reserved to admins: the claim is derived from the
+    // role so it can never be granted to (or unchecked for) anyone else.
+    permissions[permission] = permission === "canManageUsers"
+      ? data.role === "admin"
+      : data.permissions?.[permission] === true;
   }
   return { role: data.role, permissions };
 }
@@ -314,11 +318,17 @@ exports.updateManagedUser = onCall(async (request) => {
   const roleChanged = before.customClaims?.role !== access.role;
   const supplierIdChanged = access.role === "supplier" &&
     before.customClaims?.supplierId !== access.supplierId;
+  const permissionsChanged = access.role !== "supplier" &&
+    JSON.stringify(before.customClaims?.permissions || {}) !== JSON.stringify(access.permissions);
 
   await auth.setCustomUserClaims(uid, access);
   await auth.updateUser(uid, { displayName: profile.displayName });
   await getDatabase(databaseId).collection("users").doc(uid).set({ ...profile, ...access }, { merge: true });
-  if (roleChanged || supplierIdChanged) {
+  // Permission changes only reach the client through a fresh ID token (the
+  // current one keeps the old claims for up to an hour). Revoking refresh
+  // tokens ends the session at the next refresh, unless the admin is editing
+  // their own account — the client then force-refreshes the token instead.
+  if ((roleChanged || supplierIdChanged || permissionsChanged) && uid !== request.auth.uid) {
     await auth.revokeRefreshTokens(uid);
   }
   await writeAudit(databaseId, request.auth.uid, "update", uid, {
@@ -512,8 +522,7 @@ exports.updateSupplierOrder = onCall(async (request) => {
     const before = snap.data();
 
     const actor = await loadActor(dbId, request.auth.uid);
-    const isAdminSide = role === "admin" ||
-      (role !== "supplier" && !!request.auth.token.permissions?.canManageSupplierOrders);
+    const isAdminSide = role !== "supplier" && !!request.auth.token.permissions?.canManageSupplierOrders;
 
     if (!isAdminSide) {
       if (role !== "supplier") {

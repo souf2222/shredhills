@@ -36,8 +36,11 @@ export function useFirestore(authUser, auditActor) {
   const [punchesLoading, setPunchesLoading] = useState(true);
 
   const authUid = authUser?.uid || null;
-  const canViewAudit = auditActor?.role === "admin" || !!auditActor?.permissions?.canManageUsers;
-  const can = (permission) => auditActor?.role === "admin" || !!auditActor?.permissions?.[permission];
+  // Managing users is reserved to admins — derived from the role, not the claims.
+  const can = (permission) => permission === "canManageUsers"
+    ? auditActor?.role === "admin"
+    : !!auditActor?.permissions?.[permission];
+  const canViewAudit = can("canManageUsers");
   // Serialize permissions so token refreshes (which recreate the claims
   // object) don't tear down and re-attach every Firestore listener.
   const permissionsKey = JSON.stringify(auditActor?.permissions ?? {});

@@ -62,7 +62,7 @@ export function UserModal({ user, suppliers, onSave, onCreate, onDelete, onClose
       setForm(f => ({ ...f, role:"admin", permissions: Object.fromEntries(Object.keys(PERMISSION_LABELS).map(k => [k, true])) }));
     } else if (tpl === "accountant") {
       setForm(f => ({ ...f, role:"user", permissions: {
-        canManageUsers:true, canManageOrders:false, canManageContacts:true, canManageEvents:false, canViewEvents:true,
+        canManageUsers:false, canManageOrders:false, canManageContacts:true, canManageEvents:false, canViewEvents:true,
         canManageExpenses:true, canManageAcquisitions:true, canManageDeliveries:false, canViewDeliveries:false, canManageReports:true,
         canClockIn:true, canViewTasks:false, canSubmitExpenses:true, canSubmitAcquisitions:true,
       }}));
@@ -145,7 +145,16 @@ export function UserModal({ user, suppliers, onSave, onCreate, onDelete, onClose
             <label className="lbl">Rôle</label>
             <div style={{ display:"flex", gap:10 }}>
               {[["user","👤 Utilisateur"],["admin","⚙️ Admin"],["supplier","🏭 Fournisseur"]].map(([v,l]) => (
-                <button key={v} onClick={() => set("role", v)} className="btn"
+                <button key={v} onClick={() => setForm(f => ({
+                  ...f,
+                  role: v,
+                  permissions: {
+                    ...(v === "admin" && f.role !== "admin"
+                      ? Object.fromEntries(Object.keys(PERMISSION_LABELS).map(k => [k, true]))
+                      : f.permissions),
+                    canManageUsers: v === "admin",
+                  },
+                }))} className="btn"
                   style={{ flex:1, justifyContent:"center", background:form.role===v?"#111":"white", color:form.role===v?"white":"#3A3A3C", border:"1.5px solid", borderColor:form.role===v?"#111":"#E5E5EA" }}>{l}</button>
               ))}
             </div>
@@ -178,12 +187,16 @@ export function UserModal({ user, suppliers, onSave, onCreate, onDelete, onClose
             <div>
               <label className="lbl">Permissions</label>
               <div style={{ background:"#F9F9F9", borderRadius:12, padding:"12px 14px", display:"flex", flexDirection:"column", gap:10 }}>
-                {Object.entries(PERMISSION_LABELS).map(([key, label]) => (
+                {Object.entries(PERMISSION_LABELS).filter(([key]) => key !== "canManageUsers").map(([key, label]) => (
                   <label key={key} style={{ display:"flex", alignItems:"center", gap:10, fontSize:14, cursor:"pointer" }}>
                     <input type="checkbox" checked={form.permissions?.[key] || false} onChange={e => setPerm(key, e.target.checked)} style={{ width:18, height:18 }}/>
                     <span>{label}</span>
                   </label>
                 ))}
+                <label style={{ display:"flex", alignItems:"center", gap:10, fontSize:14, color:"#8E8E93", cursor:"default" }}>
+                  <input type="checkbox" checked={form.role === "admin"} disabled style={{ width:18, height:18 }}/>
+                  <span>{PERMISSION_LABELS.canManageUsers} — 🔒 réservé au rôle admin</span>
+                </label>
               </div>
             </div>
           )}

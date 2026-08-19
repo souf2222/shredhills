@@ -32,7 +32,10 @@ for (const profile of users.docs) {
   const data = profile.data();
   const role = data.role === "admin" ? "admin" : "user";
   const claimedPermissions = Object.fromEntries(
-    permissions.map((permission) => [permission, role === "admin" || data.permissions?.[permission] === true])
+    permissions.map((permission) => [
+      permission,
+      permission === "canManageUsers" ? role === "admin" : data.permissions?.[permission] === true,
+    ])
   );
   await auth.setCustomUserClaims(profile.id, { role, permissions: claimedPermissions });
   writer.update(profile.ref, {

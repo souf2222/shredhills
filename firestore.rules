@@ -9,13 +9,13 @@ service cloud.firestore {
       return signedIn() && request.auth.token.role == "admin";
     }
 
+    // Permissions are the single source of truth for admins too: unchecking a
+    // permission in the users modal restricts Firestore access as well.
     function hasPermission(permission) {
-      return isAdmin() || (
-        signedIn() &&
+      return signedIn() &&
         request.auth.token.permissions != null &&
         request.auth.token.permissions.keys().hasAll([permission]) &&
-        request.auth.token.permissions[permission] == true
-      );
+        request.auth.token.permissions[permission] == true;
     }
 
     function isOwner(field) {
@@ -124,8 +124,9 @@ service cloud.firestore {
     }
 
     // Logs are written only by the Admin SDK and cannot be forged by clients.
+    // Reading them (user management / history) is reserved to admins.
     match /auditLogs/{id} {
-      allow read: if hasPermission("canManageUsers");
+      allow read: if isAdmin();
       allow write: if false;
     }
 
