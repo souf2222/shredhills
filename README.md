@@ -40,7 +40,13 @@ VITE_FIREBASE_APP_ID=1:123456789:web:abcdef
 VITE_FIREBASE_DB=
 ```
 
-The Functions environment is generated from the same root `.env` file before deployment, so it always uses the exact `VITE_FIREBASE_DB` or legacy `REACT_APP_FIREBASE_DB` value.
+The Functions environment is generated from the same root `.env` file before deployment: `VITE_FIREBASE_DB` (or legacy `REACT_APP_FIREBASE_DB`) selects the single Firestore database used by the app **and** by Cloud Functions. One knob per environment: `dev-db` in dev, `prod` in production.
+
+**Important** : après avoir changé `VITE_FIREBASE_DB` dans `.env`, redéployer les fonctions pour qu'elles suivent :
+```bash
+firebase deploy --only functions
+```
+Le dernier déploiement fait foi — une app pointant sur une base différente de celle des fonctions déployées verra ses appels serveur rejetés (`Unknown database`).
 
 ### 3. Initialiser l'administrateur
 
@@ -52,6 +58,16 @@ node functions/scripts/bootstrap-admin.mjs admin@exemple.com
 ```
 
 L'administrateur doit se déconnecter puis se reconnecter. Les administrateurs créent ensuite les autres comptes dans l'application par Cloud Functions; cette action ne peut pas être exécutée par le navigateur seul.
+
+Pour forcer **tous** les utilisateurs à se reconnecter (ex. après un changement de rôles/permissions) :
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS=/chemin/vers/service-account.json
+node functions/scripts/revoke-all-sessions.mjs --dry-run  # compter d'abord
+node functions/scripts/revoke-all-sessions.mjs            # déconnecter tout le monde
+```
+
+Les sessions actives sont invalidées au prochain rafraîchissement du token (sous 1 heure).
 
 ### 4. Déployer les contrôles de sécurité
 
@@ -227,7 +243,7 @@ Pour restaurer manuellement les données de pointage d'un utilisateur :
 ```javascript
 // Appel depuis un environnement admin
 const restoreFunction = functions.httpsCallable('restorePunchFromBackup');
-await restoreFunction({ userId: "USER_ID", databaseId: "dev-db" }); // ou "prod"
+await restoreFunction({ userId: "USER_ID" }); // databaseId optionnel, lu depuis la config des fonctions
 ```
 La sauvegarde est lue et restaurée dans la même base de données que les pointages.
 
@@ -293,6 +309,10 @@ La caméra et la signature tactile nécessitent **HTTPS**.
 **L'app affiche le projet `shredhills-dev`**
 → Le fichier `.env` n'est pas chargé. Vérifier qu'il est à la racine et **redémarrer** `npm start`
    (les variables `REACT_APP_*` ne sont lues qu'au démarrage).
+
+**`Unknown database` sur les actions admin / fournisseurs**
+→ Les fonctions ont été déployées avec un autre `VITE_FIREBASE_DB` que le `.env` actuel.
+   Redéployer : `firebase deploy --only functions`.
 
 **Caméra non fonctionnelle sur iPhone**
 → L'app doit être servie en **HTTPS** (Vercel / Firebase Hosting le font automatiquement).
