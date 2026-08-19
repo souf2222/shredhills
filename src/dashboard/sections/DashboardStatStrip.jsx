@@ -1,6 +1,15 @@
 // src/dashboard/sections/DashboardStatStrip.jsx
 import { useState, useEffect } from "react";
 import { fmtMs, fmtHours, fmtTime, dayStart } from "../../utils/helpers";
+import { newPunchId } from "../../utils/punchLogic";
+
+const PUNCH_ERRORS = {
+  ALREADY_ACTIVE_SESSION: "Tu es déjà en service",
+  INVALID_TIMESTAMP: "Horloge invalide — vérifie la date de ton appareil",
+  OVERLAPPING_SESSION: "Chevauchement avec une session existante",
+  PUNCH_DOC_FULL: "Historique trop volumineux — contacte un admin",
+  SESSION_NOT_FOUND: "Session introuvable",
+};
 
 export function DashboardStatStrip({ events, orders, stops, users, punches, userProfile, addPunchSession, closePunchSession, showToast }) {
   const [, tick] = useState(0);
@@ -20,17 +29,13 @@ export function DashboardStatStrip({ events, orders, stops, users, punches, user
   const todayLiveMs   = activeSess ? Date.now() - activeSess.punchIn : 0;
 
   const punchIn = async () => {
-    const session = { id: `P-${Date.now().toString(36).toUpperCase()}`, punchIn: Date.now(), punchOut: null, note: "" };
+    const session = { id: newPunchId(), punchIn: Date.now(), punchOut: null, note: "" };
     try {
       await addPunchSession(userProfile.id, session);
       showToast("Punch in !");
     } catch (error) {
-      if (error.message === "ALREADY_ACTIVE_SESSION") {
-        showToast("Tu es déjà en service");
-      } else {
-        showToast("Erreur lors du punch in");
-        console.error("Punch in error:", error);
-      }
+      showToast(PUNCH_ERRORS[error.message] || "Erreur lors du punch in");
+      console.error("Punch in error:", error);
     }
   };
 
@@ -40,7 +45,7 @@ export function DashboardStatStrip({ events, orders, stops, users, punches, user
         await closePunchSession(userProfile.id, activeSess.id);
         showToast("Pause !");
       } catch (err) {
-        showToast("Erreur lors du punch out");
+        showToast(PUNCH_ERRORS[err.message] || "Erreur lors du punch out");
         console.error("Punch out error:", err);
       }
     }

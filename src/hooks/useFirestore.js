@@ -1,30 +1,13 @@
 // src/hooks/useFirestore.js
 import { useState, useEffect } from "react";
 import {
-  collection, doc, onSnapshot, serverTimestamp, query, where, orderBy, limit, writeBatch, runTransaction,
-  getDoc, setDoc
+  collection, doc, onSnapshot, serverTimestamp, query, where, orderBy, limit, writeBatch, runTransaction
 } from "firebase/firestore";
 import { db, uploadExpensePhoto, deleteStorageFile } from "../firebase";
-import { dayStart } from "../utils/helpers";
-
-// Firestore Timestamps can come back as objects (with .toMillis() or .seconds).
-// We normalize them to plain numbers so every consumer can do arithmetic safely.
-function toMs(val) {
-  if (typeof val === "number") return val;
-  if (val && typeof val.toMillis === "function") return val.toMillis();
-  if (val && typeof val.seconds === "number") return val.seconds * 1000;
-  if (val instanceof Date) return val.getTime();
-  return val;
-}
-
-// Sanity-check a punch timestamp: must be a finite number, not in the future
-// (beyond 1 minute tolerance), and not older than 1 year ago.
-const ONE_MIN = 60_000;
-const ONE_YEAR = 365 * 24 * 60 * 60 * 1000;
-function isValidPunchTs(ts) {
-  return typeof ts === "number" && Number.isFinite(ts) &&
-    ts <= Date.now() + ONE_MIN && ts >= Date.now() - ONE_YEAR;
-}
+import {
+  toMs, sanitizeSession, normalizeSessions, autoCloseOrphans,
+  findOpenSession, findOverlap, validateSession, MAX_SESSIONS,
+} from "../utils/punchLogic";
 
 function normalizeEvent(doc) {
   const d = doc.data();
@@ -227,158 +210,121 @@ export function useFirestore(authUser, auditActor) {
   // PUNCHES
   const getPunchSessions = (empId) => punches[empId] || [];
 
+  // All punch mutations run inside a Firestore transaction: the sessions
+  // array is re-read from the server and rewritten atomically, so concurrent
+  // writers (second tab, admin action) can never silently overwrite each
+  // other — Firestore retries the whole transaction instead.
+  const readPunchSessions = (punchDoc) =>
+    normalizeSessions(punchDoc.exists() ? punchDoc.data().sessions : null);
+
   const addPunchSession = async (empId, session) => {
-    // Validate the incoming session before touching Firestore.
-    if (!session || typeof session.id !== "string" || !session.id) {
-      throw new Error("INVALID_SESSION");
-    }
-    if (!isValidPunchTs(session.punchIn)) {
-      throw new Error("INVALID_TIMESTAMP");
-    }
-    
+    const err = validateSession(session);
+    if (err) throw new Error(err);
+
+    const clean = sanitizeSession(session);
     const punchRef = doc(db, "punches", empId);
-    
-    try {
-      await runTransaction(db, async (transaction) => {
-        const punchDoc = await transaction.get(punchRef);
-        let serverSessions = [];
 
-        if (punchDoc.exists()) {
-          const data = punchDoc.data();
-          // SAFEGUARD: Ensure sessions array exists and is valid
-          if (!Array.isArray(data.sessions)) {
-            console.warn(`⚠️ Punch document for ${empId} has invalid sessions structure. Creating empty array.`);
-            serverSessions = [];
-          } else {
-            serverSessions = data.sessions.map(s => ({
-              ...s,
-              punchIn: toMs(s.punchIn),
-              punchOut: s.punchOut ? toMs(s.punchOut) : null
-            }));
-          }
+    await runTransaction(db, async (transaction) => {
+      const punchDoc = await transaction.get(punchRef);
+      let serverSessions = readPunchSessions(punchDoc);
 
-          const todayStart = dayStart(Date.now());
+      if (serverSessions.length >= MAX_SESSIONS) {
+        throw new Error("PUNCH_DOC_FULL");
+      }
 
-          // Auto-close orphaned sessions from previous days (user forgot to
-          // punch out). The session is closed at the end of its start day so
-          // the worked time stays attributed to the correct day.
-          serverSessions = serverSessions.map(s => {
-            if (!s.punchOut && dayStart(toMs(s.punchIn)) !== todayStart) {
-              const orphanDayEnd = dayStart(toMs(s.punchIn)) + 24 * 60 * 60 * 1000 - 1;
-              return { ...s, punchOut: Math.min(orphanDayEnd, Date.now()) };
-            }
-            return s;
-          });
+      // Auto-close orphaned sessions from previous days (user forgot to
+      // punch out). The session is closed at the end of its start day so
+      // the worked time stays attributed to the correct day.
+      serverSessions = autoCloseOrphans(serverSessions);
 
-          // Check for active session today (guard against double punch-in)
-          const hasActiveToday = serverSessions.some(s =>
-            !s.punchOut && dayStart(toMs(s.punchIn)) === todayStart
-          );
-
-          if (hasActiveToday) {
-            throw new Error("ALREADY_ACTIVE_SESSION");
-          }
-          
-          // Add the new session to existing sessions
-          transaction.set(punchRef, { sessions: [...serverSessions, session] }, { merge: true });
-        } else {
-          // Document doesn't exist, create it with the new session as the first entry
-          transaction.set(punchRef, { sessions: [session] }, { merge: true });
-        }
-      });
-    } catch (error) {
-      if (error.message === "ALREADY_ACTIVE_SESSION") {
+      // Only one open session at a time (guard against double punch-in).
+      if (clean.punchOut == null && findOpenSession(serverSessions)) {
         throw new Error("ALREADY_ACTIVE_SESSION");
       }
-      throw error;
-    }
+
+      // Closed manual entries must not double-count hours against any
+      // existing session (open or closed).
+      if (findOverlap(serverSessions, clean)) {
+        throw new Error("OVERLAPPING_SESSION");
+      }
+
+      transaction.set(punchRef, { sessions: [...serverSessions, clean] }, { merge: true });
+    });
   };
 
   const updatePunchSession = async (empId, updatedSession) => {
-    // Validate the updated session before writing.
-    if (!updatedSession || typeof updatedSession.id !== "string" || !updatedSession.id) {
-      throw new Error("INVALID_SESSION");
-    }
-    if (!isValidPunchTs(updatedSession.punchIn)) {
-      throw new Error("INVALID_TIMESTAMP");
-    }
-    if (updatedSession.punchOut != null) {
-      if (!isValidPunchTs(updatedSession.punchOut) || updatedSession.punchOut <= updatedSession.punchIn) {
-        throw new Error("INVALID_TIMESTAMP");
-      }
-    }
+    const err = validateSession(updatedSession);
+    if (err) throw new Error(err);
+
+    const clean = sanitizeSession(updatedSession);
+    const punchRef = doc(db, "punches", empId);
 
     await runTransaction(db, async (transaction) => {
-      const punchRef = doc(db, "punches", empId);
       const punchDoc = await transaction.get(punchRef);
+      const serverSessions = readPunchSessions(punchDoc);
 
-      if (!punchDoc.exists()) return;
+      if (!serverSessions.some(s => s.id === clean.id)) {
+        throw new Error("SESSION_NOT_FOUND");
+      }
 
-      const data = punchDoc.data();
-      const serverSessions = Array.isArray(data.sessions) ? data.sessions.map(s => ({
-        ...s,
-        punchIn: toMs(s.punchIn),
-        punchOut: s.punchOut ? toMs(s.punchOut) : null
-      })) : [];
+      // Keep the invariant: at most one open session at a time.
+      if (clean.punchOut == null && findOpenSession(serverSessions, clean.id)) {
+        throw new Error("ALREADY_ACTIVE_SESSION");
+      }
 
-      const exists = serverSessions.some(s => s.id === updatedSession.id);
-      if (!exists) return;
+      // The edited session must not double-count hours against another one.
+      if (findOverlap(serverSessions, clean, clean.id)) {
+        throw new Error("OVERLAPPING_SESSION");
+      }
 
-      const updatedSessions = serverSessions.map(s =>
-        s.id === updatedSession.id ? updatedSession : s
+      transaction.set(
+        punchRef,
+        { sessions: serverSessions.map(s => (s.id === clean.id ? clean : s)) },
+        { merge: true }
       );
-
-      transaction.set(punchRef, { sessions: updatedSessions }, { merge: true });
     });
   };
 
   const closePunchSession = async (empId, sessionId) => {
+    const punchRef = doc(db, "punches", empId);
+
     await runTransaction(db, async (transaction) => {
-      const punchRef = doc(db, "punches", empId);
       const punchDoc = await transaction.get(punchRef);
+      const serverSessions = readPunchSessions(punchDoc);
+      const target = serverSessions.find(s => s.id === sessionId);
 
-      if (!punchDoc.exists()) return;
-
-      const data = punchDoc.data();
-      const serverSessions = Array.isArray(data.sessions) ? data.sessions.map(s => ({
-        ...s,
-        punchIn: toMs(s.punchIn),
-        punchOut: s.punchOut ? toMs(s.punchOut) : null
-      })) : [];
+      if (!target) throw new Error("SESSION_NOT_FOUND");
+      // Already closed (e.g. by another device): nothing to do, the desired
+      // state is reached.
+      if (target.punchOut != null) return;
 
       const now = Date.now();
-      const updatedSessions = serverSessions.map(s => {
-        if (s.id !== sessionId || s.punchOut) return s;
-        // Guard against clock skew: punchOut must be strictly after punchIn.
-        const punchOut = now > s.punchIn ? now : s.punchIn + 1000;
-        return { ...s, punchOut };
-      });
-
-      if (updatedSessions.some(s => s.id === sessionId && s.punchOut)) {
-        transaction.set(punchRef, { sessions: updatedSessions }, { merge: true });
-      }
+      // Guard against clock skew: punchOut must be strictly after punchIn.
+      const punchOut = now > target.punchIn ? now : target.punchIn + 1000;
+      transaction.set(
+        punchRef,
+        { sessions: serverSessions.map(s => (s.id === sessionId ? { ...s, punchOut } : s)) },
+        { merge: true }
+      );
     });
   };
 
   const deletePunchSession = async (empId, sessionId) => {
+    const punchRef = doc(db, "punches", empId);
+
     await runTransaction(db, async (transaction) => {
-      const punchRef = doc(db, "punches", empId);
       const punchDoc = await transaction.get(punchRef);
-      
-      if (!punchDoc.exists()) return;
-      
-      const data = punchDoc.data();
-      const serverSessions = Array.isArray(data.sessions) ? data.sessions.map(s => ({
-        ...s,
-        punchIn: toMs(s.punchIn),
-        punchOut: s.punchOut ? toMs(s.punchOut) : null
-      })) : [];
-      
-      const filteredSessions = serverSessions.filter(s => s.id !== sessionId);
-      
-      if (filteredSessions.length !== serverSessions.length) {
-        transaction.set(punchRef, { sessions: filteredSessions }, { merge: true });
+      const serverSessions = readPunchSessions(punchDoc);
+
+      if (!serverSessions.some(s => s.id === sessionId)) {
+        throw new Error("SESSION_NOT_FOUND");
       }
+
+      transaction.set(
+        punchRef,
+        { sessions: serverSessions.filter(s => s.id !== sessionId) },
+        { merge: true }
+      );
     });
   };
 

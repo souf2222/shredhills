@@ -70,9 +70,23 @@ service cloud.firestore {
       );
     }
 
+    // Punch documents hold { sessions: [...] }. Rules enforce structure and
+    // document lifecycle; per-session integrity (single open session, no
+    // overlaps, timestamp sanity) is enforced transactionally by the client
+    // hook, and every write is backed up and audit-logged by triggers.
     match /punches/{uid} {
-      allow read, write: if hasPermission("canManageReports") ||
-        (hasPermission("canClockIn") && request.auth.uid == uid);
+      function canAccessPunches() {
+        return hasPermission("canManageReports") ||
+          (hasPermission("canClockIn") && request.auth.uid == uid);
+      }
+      allow read: if canAccessPunches();
+      allow create, update: if canAccessPunches() &&
+        request.resource.data.keys().hasOnly(["sessions"]) &&
+        request.resource.data.sessions is list &&
+        request.resource.data.sessions.size() <= 10000;
+      // Employees edit their history through the sessions array; deleting
+      // the whole document is reserved to report managers.
+      allow delete: if hasPermission("canManageReports");
     }
 
     match /purchases/{id} {

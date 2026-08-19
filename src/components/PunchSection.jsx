@@ -13,6 +13,15 @@ import { PageHeader } from "./PageHeader";
 import { FilterBar } from "./FilterBar";
 import { PunchEditModal } from "./PunchEditModal";
 
+const PUNCH_ERRORS = {
+  INVALID_TIMESTAMP: "Horodatage invalide",
+  INVALID_SESSION: "Session invalide",
+  OVERLAPPING_SESSION: "Chevauchement avec une autre session",
+  ALREADY_ACTIVE_SESSION: "Une session est déjà en cours",
+  SESSION_NOT_FOUND: "Session introuvable — elle a peut-être été modifiée ailleurs",
+  PUNCH_DOC_FULL: "Historique trop volumineux — contacte un admin",
+};
+
 export function PunchSection({ userId, punches, updatePunchSession, deletePunchSession, showToast }) {
   const sessions = punches[userId] || [];
   const [editPunch, setEditPunch] = useState(null);
@@ -64,7 +73,7 @@ export function PunchSection({ userId, punches, updatePunchSession, deletePunchS
       setEditPunch(null);
       showToast && showToast("Session modifiée", "success");
     } catch (err) {
-      showToast && showToast(err?.message === "INVALID_TIMESTAMP" ? "Horodatage invalide" : "Erreur lors de la modification", "error");
+      showToast && showToast(PUNCH_ERRORS[err?.message] || "Erreur lors de la modification", "error");
       console.error("Punch edit error:", err);
     }
   };
@@ -75,7 +84,7 @@ export function PunchSection({ userId, punches, updatePunchSession, deletePunchS
       setEditPunch(null);
       showToast && showToast("Session supprimée", "success");
     } catch (err) {
-      showToast && showToast("Erreur lors de la suppression", "error");
+      showToast && showToast(PUNCH_ERRORS[err?.message] || "Erreur lors de la suppression", "error");
       console.error("Punch delete error:", err);
     }
   };

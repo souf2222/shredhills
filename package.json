@@ -19,7 +19,8 @@
     "prepare:functions-env": "node scripts/sync-functions-env.mjs",
     "test:rules": "firebase emulators:exec --only firestore \"node tests/firestore.rules.test.mjs\"",
     "test:punches": "firebase emulators:exec --only firestore \"node tests/punches.race.test.mjs\"",
-    "test:punches-bulletproof": "firebase emulators:exec --only firestore \"node tests/punches.bulletproof.test.mjs\""
+    "test:punches-bulletproof": "firebase emulators:exec --only firestore \"node tests/punches.bulletproof.test.mjs\"",
+    "test:punches-rules": "firebase emulators:exec --only firestore \"node tests/punches.rules.test.mjs\""
   },
   "browserslist": {
     "production": [

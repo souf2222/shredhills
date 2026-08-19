@@ -5,7 +5,7 @@ const { HttpsError, onCall } = require("firebase-functions/v2/https");
 const { onDocumentWrittenWithAuthContext } = require("firebase-functions/v2/firestore");
 const { defineString } = require("firebase-functions/params");
 const { punchSessionAuditAction } = require("./audit");
-const { backupPunchData } = require("./punch-backup");
+const { backupPunchData, restoreFromLatestBackup } = require("./punch-backup");
 const {
   SUPPLIER_STATUSES,
   SUPPLIER_TRANSITIONS,
@@ -132,39 +132,7 @@ function sanitizeAccess(data, supplierId) {
     }
     // Suppliers carry no fine-grained permissions. Their scope is the
     // supplierId claim, enforced by Firestore and Storage rules.
-    return { role: "supplier", supplierId, permissions: {  }
-}
-
-// ── Punch Data Restore Function ───────────────────────────────────────────────
-const { restoreFromLatestBackup } = require("./punch-backup");
-
-/**
- * Admin function to restore punch data from latest backup
- */
-exports.restorePunchFromBackup = onCall(async (request) => {
-  try {
-    requireAdmin(request);
-    const { userId } = request.data || {};
-    
-    if (typeof userId !== "string" || userId.length === 0) {
-      throw new HttpsError("invalid-argument", "Valid userId is required");
-    }
-    
-    const databaseId = databaseIdFrom(request.data, DB_DEV.value());
-    const restoredData = await restoreFromLatestBackup(databaseId, userId);
-    
-    return { 
-      success: true, 
-      message: `Punch data restored for user ${userId}`,
-      restoredSessionsCount: restoredData.sessions?.length || 0
-    };
-    
-  } catch (error) {
-    console.error("restorePunchFromBackup failed:", error);
-    if (error instanceof HttpsError) throw error;
-    throw new HttpsError("internal", "Failed to restore punch data from backup");
-  }
-});;
+    return { role: "supplier", supplierId, permissions: {} };
   }
 
   const permissions = {};
@@ -385,6 +353,47 @@ exports.removeLegacyPins = onCall(async (request) => {
   return { removed };
 });
 
+// ── Punch data restore ────────────────────────────────────────────────────────
+// Admin-only: restore a user's punch document from the latest automatic
+// backup (see punch-backup.js — every punches write is backed up first).
+exports.restorePunchFromBackup = onCall(async (request) => {
+  try {
+    requireAdmin(request);
+    const { userId } = request.data || {};
+
+    if (typeof userId !== "string" || userId.length === 0) {
+      throw new HttpsError("invalid-argument", "Valid userId is required");
+    }
+
+    const databaseId = databaseIdFrom(request.data, DB_DEV.value());
+    const restoredData = await restoreFromLatestBackup(getDatabase(databaseId), userId);
+
+    // Explicit audit entry with the true actor — the restore write itself
+    // surfaces in the auto-trigger only as "Système".
+    await getDatabase(databaseId).collection("auditLogs").add({
+      actorId: request.auth.uid,
+      action: "restore",
+      collection: "punches",
+      entityId: userId,
+      entityLabel: auditEntityLabel("punches", restoredData, userId),
+      actorName: "Administrateur",
+      source: "callable",
+      snapshot: cleanAuditValue(restoredData),
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+    return {
+      success: true,
+      message: `Punch data restored for user ${userId}`,
+      restoredSessionsCount: restoredData?.sessions?.length || 0,
+    };
+  } catch (error) {
+    console.error("restorePunchFromBackup failed:", error);
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError("internal", "Failed to restore punch data from backup");
+  }
+});
+
 // Audit trigger — registered once per database. Each instance is pinned to
 // its own DB via the `database` param (resolved at deploy time from env) and
 // writes auditLogs back to that same DB, so dev and prod audit trails stay
@@ -397,18 +406,21 @@ function makeAuditHandler(dbParam) {
     // to prevent recursive audit records. `supplierOrders` is written by the
     // `updateSupplierOrder` callable (Admin SDK), which would surface here as
     // `Système (UNKNOWN)`, losing the true supplier actor. The callable writes
-    // its own explicit, attributed audit entry instead.
-    if (collectionName === "auditLogs" || collectionName === "users" || collectionName === "supplierOrders") return;
+    // its own explicit, attributed audit entry instead. `punch_backups` is
+    // written by the backup routine itself — auditing it would only add noise.
+    if (collectionName === "auditLogs" || collectionName === "users" ||
+        collectionName === "supplierOrders" || collectionName === "punch_backups") return;
     const before = event.data?.before;
     const after = event.data?.after;
     const documentAction = !before?.exists ? "create" : !after?.exists ? "delete" : "update";
     const beforeData = before?.data() || {};
     const afterData = after?.data() || {};
-    
-    // 🔒 ADD BACKUP LOGIC: Backup punch data before any write operation
+
+    // Backup the pre-write state of any punch document before it changes, so
+    // data can be recovered if a write turns out to be destructive.
     if (collectionName === "punches" && before?.exists) {
       try {
-        await backupPunchData(dbParam.value(), event.params.documentId, beforeData);
+        await backupPunchData(getFirestore(app, dbParam.value()), event.params.documentId, beforeData);
       } catch (backupError) {
         console.warn(`⚠️ Punch backup failed but continuing:`, backupError.message);
       }

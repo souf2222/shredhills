@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { todayStr } from "../utils/helpers";
+import { newPunchId } from "../utils/punchLogic";
 
 export function PunchAddModal({ user, onSave, onClose }) {
   const [date, setDate] = useState(todayStr());
@@ -13,8 +14,7 @@ export function PunchAddModal({ user, onSave, onClose }) {
 
   const save = () => {
     if (!valid) return;
-    const id = `P-${Date.now().toString(36).toUpperCase()}`;
-    onSave({ id, punchIn: start, punchOut: end, note: note.trim() || "" });
+    onSave({ id: newPunchId(), punchIn: start, punchOut: end, note: note.trim() || "" });
   };
 
   return (

@@ -119,10 +119,6 @@ export const getDateRange = (range, customStart, customEnd) => {
     const d = new Date(now); d.setMonth(0, 1); d.setHours(0,0,0,0);
     return { start: d.getTime(), end: now };
   }
-  if (range === "year") {
-    const d = new Date(now); d.setMonth(0, 1); d.setHours(0,0,0,0);
-    return { start: d.getTime(), end: now };
-  }
   if (range === "custom" && customStart) {
     const s = new Date(customStart).getTime();
     const e = customEnd ? new Date(customEnd).getTime() + DAY - 1 : s + DAY - 1;

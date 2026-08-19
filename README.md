@@ -122,9 +122,13 @@ Le système de pointage a été renforcé pour éviter toute perte de données :
 
 - **Transactions atomiques** : Toutes les opérations de pointage se font via des transactions Firestore
 - **Prévention des doubles pointages** : Impossible de pointer deux fois sans avoir pointé out
-- **Sauvegarde automatique** : Une sauvegarde est créée avant chaque modification des données de pointage
-- **Restauration d'urgence** : Fonction d'administration pour restaurer les données depuis la dernière sauvegarde
+- **Anti-chevauchement** : Une session (manuelle ou modifiée) ne peut pas chevaucher une session existante — les heures ne sont jamais comptées deux fois
+- **Erreurs explicites** : `SESSION_NOT_FOUND` si la session visée a disparu (plus de faux « succès » silencieux)
+- **Validation des règles Firestore** : `firestore.rules` vérifie la structure du document (`sessions` uniquement, liste plafonnée) et réserve la suppression du document aux gestionnaires de rapports
+- **Sauvegarde automatique** : Une sauvegarde est créée avant chaque modification des données de pointage (dans la même base de données)
+- **Restauration d'urgence** : Fonction d'administration `restorePunchFromBackup` pour restaurer les données depuis la dernière sauvegarde
 - **Détection intelligente** : Le système détecte automatiquement les sessions orphelines et les ferme à la fin de la journée
+- **Logique partagée et testée** : La logique pure vit dans `src/utils/punchLogic.js` (testée par `npm test`)
 
 Les données de pointage sont stockées dans la collection `punches` avec une structure sécurisée :
 ```javascript
@@ -139,6 +143,9 @@ Les données de pointage sont stockées dans la collection `punches` avec une st
   ]
 }
 ```
+
+Tests : `npm test` (logique pure), `npm run test:punches` (courses/emulator),
+`npm run test:punches-rules` (règles de sécurité, emulator).
 
 ---
 
@@ -220,8 +227,9 @@ Pour restaurer manuellement les données de pointage d'un utilisateur :
 ```javascript
 // Appel depuis un environnement admin
 const restoreFunction = functions.httpsCallable('restorePunchFromBackup');
-await restoreFunction({ userId: "USER_ID" });
+await restoreFunction({ userId: "USER_ID", databaseId: "dev-db" }); // ou "prod"
 ```
+La sauvegarde est lue et restaurée dans la même base de données que les pointages.
 
 ---
 

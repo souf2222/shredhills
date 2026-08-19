@@ -6,6 +6,15 @@ import { FilterBar } from "../../components/FilterBar";
 import { PunchEditModal } from "../../components/PunchEditModal";
 import { PunchAddModal } from "../../components/PunchAddModal";
 
+const PUNCH_ERRORS = {
+  ALREADY_ACTIVE_SESSION: "Cet employé a déjà une session active",
+  INVALID_TIMESTAMP: "Horodatage invalide",
+  INVALID_SESSION: "Session invalide",
+  OVERLAPPING_SESSION: "Chevauchement avec une session existante — modifie la session concernée",
+  SESSION_NOT_FOUND: "Session introuvable — elle a peut-être été modifiée ailleurs",
+  PUNCH_DOC_FULL: "Historique trop volumineux pour cet employé",
+};
+
 export function FeuillesTempsSection({ users, punches, dateRange, setDateRange, customStart, setCustomStart, customEnd, setCustomEnd, addPunchSession, updatePunchSession, deletePunchSession, showToast }) {
   const { start: rangeStart, end: rangeEnd } = getDateRange(dateRange, customStart, customEnd);
   const [editPunch, setEditPunch] = useState(null);
@@ -23,7 +32,7 @@ export function FeuillesTempsSection({ users, punches, dateRange, setDateRange, 
       setEditUserId(null);
       showToast && showToast("Session modifiée", "success");
     } catch (err) {
-      showToast && showToast(err?.message === "INVALID_TIMESTAMP" ? "Horodatage invalide" : "Erreur lors de la modification", "error");
+      showToast && showToast(PUNCH_ERRORS[err?.message] || "Erreur lors de la modification", "error");
       console.error("Punch edit error:", err);
     }
   };
@@ -34,7 +43,7 @@ export function FeuillesTempsSection({ users, punches, dateRange, setDateRange, 
       setAddPunchUser(null);
       showToast && showToast("Pointage ajouté", "success");
     } catch (err) {
-      showToast && showToast(err?.message === "ALREADY_ACTIVE_SESSION" ? "Cet employé a déjà une session active" : "Erreur lors de l'ajout", "error");
+      showToast && showToast(PUNCH_ERRORS[err?.message] || "Erreur lors de l'ajout", "error");
       console.error("Punch add error:", err);
     }
   };
@@ -46,7 +55,7 @@ export function FeuillesTempsSection({ users, punches, dateRange, setDateRange, 
       setEditUserId(null);
       showToast && showToast("Session supprimée", "success");
     } catch (err) {
-      showToast && showToast("Erreur lors de la suppression", "error");
+      showToast && showToast(PUNCH_ERRORS[err?.message] || "Erreur lors de la suppression", "error");
       console.error("Punch delete error:", err);
     }
   };
